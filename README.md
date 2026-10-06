@@ -1,7 +1,11 @@
-# Rachunkownik (Paragon)
+# Rachunkownik / Spendnik
 
-Mobilna aplikacja Flutter do śledzenia wydatków: paragony z OCR, ręczne wpisy, kategoryzacja,
-budżety, subskrypcje, czat o wydatkach. Projekty ekranów: `design/`.
+[![Release](https://img.shields.io/github/v/release/GrzegorzSzczepanek/Rachunkownik?label=Pobierz%20APK)](https://github.com/GrzegorzSzczepanek/Rachunkownik/releases)
+
+Mobilna aplikacja Flutter do śledzenia wydatków: paragony z OCR, dodawanie wydatków przez czat naturalnym językiem, kategoryzacja, budżety, subskrypcje, kopie zapasowe, blokada biometryczna i automatyczne aktualizacje.
+
+> **Języki:** Polski (**Rachunkownik**) oraz opcjonalny angielski (**Spendnik**), z możliwością przełączenia w Ustawieniach.
+> **Pobieranie:** Gotowy plik `.apk` jest dostępny w zakładce [GitHub Releases](https://github.com/GrzegorzSzczepanek/Rachunkownik/releases).
 
 ## Architektura
 

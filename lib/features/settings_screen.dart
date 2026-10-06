@@ -8,6 +8,7 @@ import '../ai/ai_settings.dart';
 import '../ai/local_models.dart';
 import '../core/app_update.dart';
 import '../core/app_version.dart';
+import '../core/localization.dart';
 import '../core/theme.dart';
 import '../providers.dart';
 import '../notifications/notification_sync.dart';
@@ -136,6 +137,8 @@ class SettingsScreen extends ConsumerWidget {
                 s.privacy.showTokenCounter, (v) => ctrl.setPrivacy(s.privacy.copyWith(tokens: v))),
           ]),
         ),
+        const SizedBox(height: 16),
+        const _LanguageCard(),
         const SizedBox(height: 16),
         const _AboutCard(),
       ],
@@ -332,13 +335,14 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
 
   @override
   Widget build(BuildContext context) {
+    final str = ref.watch(appStringsProvider);
     return SectionCard(
       padding: EdgeInsets.zero,
       child: Column(children: [
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          title: const Text('Aktualizacje', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          subtitle: const Text('Wersja $appVersion · Sprawdź nowe wydania na GitHubie'),
+          title: Text(str.updates, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          subtitle: Text('Wersja $appVersion · ${str.updatesSub}'),
           trailing: _checking
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.refresh_rounded, color: AppColors.green),
@@ -347,12 +351,61 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
         const Divider(),
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          title: const Text('Repozytorium GitHub', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          title: Text(str.github, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           subtitle: const Text(githubRepo),
           trailing: const Icon(Icons.open_in_new_rounded, color: AppColors.muted, size: 20),
           onTap: () => launchUrl(Uri.parse('https://github.com/$githubRepo'), mode: LaunchMode.externalApplication),
         ),
       ]),
+    );
+  }
+}
+
+class _LanguageCard extends ConsumerWidget {
+  const _LanguageCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
+    final currentLang = ref.watch(appLanguageProvider);
+    final notifier = ref.read(appLanguageProvider.notifier);
+
+    return SectionCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.language_rounded, color: AppColors.green, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(str.language, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(str.languageDesc, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<AppLanguage>(
+              segments: [
+                ButtonSegment(value: AppLanguage.system, label: Text(str.languageSystem)),
+                const ButtonSegment(value: AppLanguage.pl, label: Text('Polski')),
+                const ButtonSegment(value: AppLanguage.en, label: Text('English')),
+              ],
+              selected: {currentLang},
+              onSelectionChanged: (set) {
+                if (set.isNotEmpty) notifier.setLanguage(set.first);
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

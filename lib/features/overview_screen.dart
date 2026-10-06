@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../ai/spending_chat.dart';
 import '../domain/retrieval.dart' show plPlural;
+import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../domain/models.dart';
@@ -51,9 +52,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
       ref.read(dataVersionProvider.notifier).bump();
       setState(() => _answer = null);
       if (mounted) {
+        final str = ref.read(appStringsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cofnięto dodanie wydatku: ${r.store}'),
+            content: Text('${str.undoSuccess}: ${r.store}'),
             backgroundColor: AppColors.green,
           ),
         );
@@ -65,13 +67,14 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final str = ref.watch(appStringsProvider);
     final summary = ref.watch(monthSummaryProvider);
     final receipts = ref.watch(receiptsProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         summary.when(
-          data: (s) => _header(s),
+          data: (s) => _header(s, str),
           loading: () => const SizedBox(height: 120),
           error: (e, _) => Text('$e'),
         ),
@@ -81,7 +84,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
           onSubmitted: (_) => _ask(),
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: 'Zapytaj lub wpisz: np. Kawa 12 zł w Żabce',
+            hintText: str.chatPlaceholder,
             prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
             suffixIcon: _asking
                 ? const Padding(
@@ -103,9 +106,9 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 Row(children: [
                   const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
                   const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text('Dodano nowy wydatek z czatu',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
+                  Expanded(
+                    child: Text(str.addedFromChat,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
                   ),
                   Text(
                     formatMoney(_answer!.createdReceipt!.totalCents),
@@ -133,14 +136,14 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                   TextButton.icon(
                     style: TextButton.styleFrom(foregroundColor: AppColors.muted),
                     icon: const Icon(Icons.undo_rounded, size: 18),
-                    label: const Text('Cofnij dodanie'),
+                    label: Text(str.undo),
                     onPressed: () => _undoReceipt(_answer!.createdReceipt!),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: AppColors.green),
                     icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: const Text('Edytuj'),
+                    label: Text(str.edit),
                     onPressed: () async {
                       await Navigator.push(
                         context,
@@ -206,8 +209,8 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
             leading: const Icon(Icons.bar_chart_rounded, color: AppColors.green),
-            title: const Text('Analiza i wykresy', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-            subtitle: const Text('Trendy, kategorie, dzień po dniu'),
+            title: Text(str.analytics, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            subtitle: Text(str.analyticsSub),
             trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
             onTap: () => context.push('/analytics'),
           ),
@@ -216,15 +219,15 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         SectionCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Ostatnie paragony', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              TextButton(onPressed: () => context.go('/receipts'), child: const Text('Wszystkie')),
+              Text(str.recentReceipts, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              TextButton(onPressed: () => context.go('/receipts'), child: Text(str.all)),
             ]),
             receipts.maybeWhen(
               data: (list) => list.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text('Brak paragonów. Dotknij przycisku skanowania, aby dodać pierwszy.',
-                          style: TextStyle(color: AppColors.muted)))
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(str.noReceipts,
+                          style: const TextStyle(color: AppColors.muted)))
                   : Column(children: [
                       for (final r in list.take(3))
                         ReceiptTile(r,
@@ -239,10 +242,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     );
   }
 
-  Widget _header(MonthSummary s) {
+  Widget _header(MonthSummary s, AppStrings str) {
     final frac = s.budgetTotal == 0 ? 0.0 : s.spent / s.budgetTotal;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Eyebrow('${monthLabel(s.month)} · WYDANE'),
+      Eyebrow('${monthLabel(s.month)} · ${str.spent}'),
       const SizedBox(height: 6),
       Text(formatMoney(s.spent), style: mono(size: 44)),
       if (s.budgetTotal > 0) ...[
@@ -250,7 +253,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         ProgressBar(frac, color: frac > 1 ? AppColors.amber : AppColors.green),
         const SizedBox(height: 6),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Budżet ${formatMoney(s.budgetTotal)}', style: const TextStyle(color: AppColors.muted)),
+          Text('${str.budget} ${formatMoney(s.budgetTotal)}', style: const TextStyle(color: AppColors.muted)),
           Text(s.remaining >= 0 ? 'zostało ${formatMoney(s.remaining)}' : 'ponad budżet ${formatMoney(-s.remaining)}',
               style: mono(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
         ]),

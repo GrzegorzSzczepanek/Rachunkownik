@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
+import 'localization.dart';
 import 'theme.dart';
 
 /// Wraps the app content and displays a lock screen whenever biometric
@@ -76,6 +77,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate> with Widg
       return widget.child;
     }
 
+    final str = ref.watch(appStringsProvider);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -102,15 +104,17 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate> with Widg
                   child: const Icon(Icons.lock_outline_rounded, size: 48, color: AppColors.green),
                 ),
                 const SizedBox(height: 28),
-                const Text(
-                  'Rachunkownik',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink),
+                Text(
+                  str.appName,
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Aplikacja jest zabezpieczona blokadą biometryczną.',
+                Text(
+                  str.isEnglish
+                      ? 'The app is secured with biometric lock.'
+                      : 'Aplikacja jest zabezpieczona blokadą biometryczną.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: AppColors.muted),
+                  style: const TextStyle(fontSize: 16, color: AppColors.muted),
                 ),
                 const SizedBox(height: 36),
                 FilledButton.icon(
@@ -128,7 +132,9 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate> with Widg
                         )
                       : const Icon(Icons.fingerprint_rounded, size: 24),
                   label: Text(
-                    _authenticating ? 'Weryfikacja...' : 'Odblokuj',
+                    _authenticating
+                        ? (str.isEnglish ? 'Verifying...' : 'Weryfikacja...')
+                        : str.unlock,
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                 ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/app_update.dart';
 import 'core/biometric_lock_gate.dart';
+import 'core/localization.dart';
 import 'core/theme.dart';
 import 'features/analytics_screen.dart';
 import 'features/api_provider_screen.dart';
@@ -105,11 +106,14 @@ class _RachunkownikAppState extends ConsumerState<RachunkownikApp> with WidgetsB
     return _app(context);
   }
 
-  Widget _app(BuildContext context) => MaterialApp.router(
-        title: 'Paragon',
-        debugShowCheckedModeBanner: false,
-        theme: buildTheme(),
-        routerConfig: _router,
-        builder: (context, child) => BiometricLockGate(child: child ?? const SizedBox.shrink()),
-      );
+  Widget _app(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
+    return MaterialApp.router(
+      title: s.appName,
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(),
+      routerConfig: _router,
+      builder: (context, child) => BiometricLockGate(child: child ?? const SizedBox.shrink()),
+    );
+  }
 }
