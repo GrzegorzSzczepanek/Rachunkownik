@@ -27,6 +27,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
     final s = ref.watch(aiSettingsProvider);
     final ctrl = ref.read(aiSettingsProvider.notifier);
     final downloads = ref.watch(modelDownloadsProvider);
@@ -39,37 +40,41 @@ class SettingsScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
-        const Text('Model AI', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+        Text(str.tabSettings, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        const Text('Każde zadanie wykonuje inny silnik. Wybierz, co zostaje na telefonie.',
-            style: TextStyle(color: AppColors.muted, fontSize: 16)),
+        Text(
+          str.isEnglish ? 'Preferences, security, backups and AI' : 'Preferencje, bezpieczeństwo, kopie danych i AI',
+          style: const TextStyle(color: AppColors.muted, fontSize: 16),
+        ),
         const SizedBox(height: 16),
-        for (final t in AiTask.values) ...[
-          SectionCard(
-            border: s.engineFor(t) == AiEngine.api ? AppColors.blue : null,
-            padding: const EdgeInsets.all(18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(t.label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-                EngineToggle(
-                  api: s.engineFor(t) == AiEngine.api,
-                  onChanged: (api) => ctrl.setEngine(t, api ? AiEngine.api : AiEngine.local),
-                ),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                  s.engineFor(t) == AiEngine.api
-                      ? (t == AiTask.embeddings
-                          ? (s.api.embeddingModel.isEmpty
-                              ? '$provider · ustaw model embeddingów w Dostawcy API'
-                              : '$provider · ${s.api.embeddingModel}')
-                          : '$provider${s.api.model.isEmpty ? ' · skonfiguruj model' : ' · ${s.api.model}'}')
-                      : _localDetail[t]!,
-                  style: const TextStyle(color: AppColors.muted)),
-            ]),
+        const _LanguageCard(),
+        const SizedBox(height: 16),
+        const _SecurityCard(),
+        const SizedBox(height: 16),
+        const _NotificationsCard(),
+        const SizedBox(height: 16),
+        SectionCard(
+          padding: EdgeInsets.zero,
+          child: Column(children: [
+            _link(str.backupJson, '', () => exportBackupJson(context, ref), icon: Icons.backup_outlined),
+            const Divider(),
+            _link(str.restoreJson, '', () => restoreBackupJson(context, ref), icon: Icons.settings_backup_restore_outlined),
+            const Divider(),
+            _link(str.exportCsv, '', () => exportCsv(context, ref), icon: Icons.download_outlined),
+            const Divider(),
+            _link('Import z banku (CSV)', '', () => context.push('/import'), icon: Icons.upload_file_outlined),
+            const Divider(),
+            _link(str.analytics, '', () => context.push('/analytics'), icon: Icons.bar_chart_outlined),
+          ]),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            str.isEnglish ? 'Artificial Intelligence (AI)' : 'Sztuczna inteligencja (AI)',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 12),
-        ],
+        ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -77,7 +82,7 @@ class SettingsScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(16)),
           child: Text(
             apiTasks.isEmpty
-                ? 'Wszystko zostaje na telefonie. Nic nie jest wysyłane.'
+                ? 'Wszystko zostaje na telefonie. Nic nie jest wysyłane na serwery.'
                 : 'Do $provider trafia: ${apiTasks.map((t) => switch (t) {
                       AiTask.receiptReading => 'zdjęcia paragonów',
                       AiTask.categorization => 'nazwy pozycji',
@@ -87,40 +92,63 @@ class SettingsScreen extends ConsumerWidget {
             style: TextStyle(color: apiTasks.isEmpty ? AppColors.green : AppColors.blue, height: 1.4),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SectionCard(
           padding: EdgeInsets.zero,
           child: Column(children: [
             _link('Dostawca API', '$provider${s.api.model.isEmpty ? '' : ' · ${s.api.model}'}',
-                () => context.go('/settings/api')),
+                () => context.go('/settings/api'), icon: Icons.cloud_outlined),
             const Divider(),
-            _link('Modele lokalne i pobieranie', _gb(installed), () => context.go('/settings/models')),
+            _link('Modele lokalne i pobieranie', _gb(installed), () => context.go('/settings/models'), icon: Icons.memory_outlined),
           ]),
         ),
-        const SizedBox(height: 16),
-        const _NotificationsCard(),
-        const SizedBox(height: 16),
-        const _SecurityCard(),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SectionCard(
-          padding: EdgeInsets.zero,
-          child: Column(children: [
-            _link('Analiza i wykresy', '', () => context.push('/analytics')),
-            const Divider(),
-            _link('Import z banku (CSV)', '', () => context.push('/import')),
-            const Divider(),
-            _link('Eksport do CSV', '', () => exportCsv(context, ref)),
-            const Divider(),
-            _link('Kopia zapasowa (JSON)', '', () => exportBackupJson(context, ref)),
-            const Divider(),
-            _link('Przywróć z kopii (JSON)', '', () => restoreBackupJson(context, ref)),
-          ]),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.tune_rounded, color: AppColors.green),
+              title: const Text('Silniki per zadanie', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              subtitle: const Text('Wybierz silnik dla OCR, kategoryzacji i czatu', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+              children: [
+                for (final t in AiTask.values) ...[
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Expanded(child: Text(t.label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                        EngineToggle(
+                          api: s.engineFor(t) == AiEngine.api,
+                          onChanged: (api) => ctrl.setEngine(t, api ? AiEngine.api : AiEngine.local),
+                        ),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(
+                        s.engineFor(t) == AiEngine.api
+                            ? (t == AiTask.embeddings
+                                ? (s.api.embeddingModel.isEmpty
+                                    ? '$provider · ustaw model embeddingów w Dostawcy API'
+                                    : '$provider · ${s.api.embeddingModel}')
+                                : '$provider${s.api.model.isEmpty ? ' · skonfiguruj model' : ' · ${s.api.model}'}')
+                            : _localDetail[t]!,
+                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                      ),
+                    ]),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SectionCard(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Column(children: [
-            _toggle('Maskuj numer karty, PESEL i dane kontaktowe w tekście przed wysłaniem',
+            _toggle('Maskuj numer karty, PESEL i dane kontaktowe',
                 'Dotyczy tekstu (OCR, kontekst czatu). Zdjęć nie zamazuje.',
                 s.privacy.maskPersonalData, (v) => ctrl.setPrivacy(s.privacy.copyWith(mask: v))),
             const Divider(),
@@ -138,8 +166,6 @@ class SettingsScreen extends ConsumerWidget {
           ]),
         ),
         const SizedBox(height: 16),
-        const _LanguageCard(),
-        const SizedBox(height: 16),
         const _AboutCard(),
       ],
     );
@@ -147,11 +173,12 @@ class SettingsScreen extends ConsumerWidget {
 
   static String _gb(int bytes) => '${(bytes / 1e9).toStringAsFixed(1).replaceAll('.', ',')} GB';
 
-  Widget _link(String title, String trailing, VoidCallback onTap) => ListTile(
+  Widget _link(String title, String trailing, VoidCallback onTap, {IconData? icon}) => ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        leading: icon != null ? Icon(icon, color: AppColors.green, size: 22) : null,
+        title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(trailing, style: const TextStyle(color: AppColors.muted)),
+          if (trailing.isNotEmpty) Text(trailing, style: const TextStyle(color: AppColors.muted)),
           const Icon(Icons.chevron_right, color: AppColors.muted),
         ]),
         onTap: onTap,

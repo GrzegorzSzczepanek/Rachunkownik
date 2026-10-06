@@ -65,7 +65,10 @@ void main() {
       await tester.tap(find.text(tab).last);
       await settle(tester);
     }
-    expect(find.text('Model AI'), findsOneWidget);
+    expect(find.text('Ustawienia'), findsWidgets);
+    expect(find.textContaining('Sztuczna inteligencja'), findsOneWidget);
+    await tester.tap(find.text('Silniki per zadanie'));
+    await settle(tester);
     expect(find.text('Czat o wydatkach'), findsOneWidget);
 
     await tester.tap(find.text('Dostawca API'));

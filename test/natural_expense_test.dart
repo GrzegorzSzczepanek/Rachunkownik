@@ -94,6 +94,36 @@ void main() {
       final rBefore = parseExpenseOffline('Przedwczoraj kupiłem książkę za 49 zł', now);
       expect(rBefore.date.day, now.subtract(const Duration(days: 2)).day);
     });
+
+    test('parses multi-line grocery list with dashes and weights directly without needing LLM', () async {
+      const input = '''
+Dodaj Mięso mielone z fileta z kurczaka 400g – 11,99 zł
+Pizza Ristorante Salami (Dr. Oetker) – 16,49 zł
+Napój Dzik Zero Winogrono 0,5l – 3,99 zł
+Dzik Energy Zero Arbuz 0,5l – 3,99 zł
+Ziemniaki w mundurkach 450g – 5,99 zł
+Banany (1,128 kg) – 3,37 zł
+Ryż długoziarnisty K-Classic 4x150g – 3,49 zł
+Sos Wild West 310g – 6,99 zł
+Kaucja za puszki (2 szt.) – 1,00 zł
+''';
+
+      expect(isExpenseInput(input), isTrue);
+      final r = await parseNaturalExpense(input, now);
+      expect(r.items.length, 9);
+      expect(r.totalCents, 5730);
+      expect(r.items[0].name, 'Mięso mielone z fileta z kurczaka 400g');
+      expect(r.items[0].cents, 1199);
+      expect(r.items[0].category, 'Jedzenie');
+      expect(r.items[1].name, 'Pizza Ristorante Salami (Dr. Oetker)');
+      expect(r.items[1].cents, 1649);
+      expect(r.items[2].name, contains('Napój Dzik Zero Winogrono'));
+      expect(r.items[2].cents, 399);
+      expect(r.items[5].name, contains('Banany'));
+      expect(r.items[5].cents, 337);
+      expect(r.items[8].name, 'Kaucja za puszki (2 szt.)');
+      expect(r.items[8].cents, 100);
+    });
   });
 
   group('parseNaturalExpense with LLM', () {

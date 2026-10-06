@@ -118,17 +118,33 @@ bool isExpenseInput(String text) {
 
   // Store pattern: "Biedronka: ..." with a price
   final hasStoreColon = RegExp(r'^[a-ząćęłńóśźż0-9\s]{2,20}[:\-]\s*').hasMatch(t);
+  final hasDashPrice = RegExp(r'[\-\–\—]\s*\d+(?:[.,]\d+)?\s*(?:zł|pln|zl)?').hasMatch(t);
+  final hasMultiLinePrices = t.contains('\n') && RegExp(r'\d+(?:[.,]\d+)?\s*(?:zł|pln|zl)').allMatches(t).length >= 2;
 
-  return (hasExpenseVerb && hasPrice) || (hasStoreColon && hasPrice) || (hasPrice && t.split(' ').length <= 6);
+  return (hasExpenseVerb && hasPrice) ||
+      (hasStoreColon && hasPrice) ||
+      hasDashPrice ||
+      hasMultiLinePrices ||
+      (hasPrice && t.split(' ').length <= 6);
 }
 
 /// Parses a natural-language description into a [Receipt].
-/// Uses LLM when available, falling back to an offline rule-based parser.
+/// Uses deterministic offline parsing first (which handles lists and clear items instantly),
+/// falling back to LLM for unstructured narrative text when available.
 Future<Receipt> parseNaturalExpense(
   String text,
   DateTime now, {
   LlmApi? llm,
 }) async {
+  // 1. Try fast deterministic offline parser first!
+  final offline = parseExpenseOffline(text, now);
+  // If offline parser detected 2+ items OR at least 1 clean named item (not generic 'Wydatek'),
+  // return immediately: instant, zero tokens, works completely offline on any phone!
+  if (offline.items.length > 1 || (offline.items.isNotEmpty && offline.items.first.name != 'Wydatek' && offline.items.first.cents > 0)) {
+    return offline;
+  }
+
+  // 2. Try LLM for loose narrative phrasing if available
   if (llm != null) {
     try {
       final res = await llm
@@ -136,9 +152,9 @@ Future<Receipt> parseNaturalExpense(
             system: _expensePrompt,
             user: 'Dzisiejsza data: ${now.toIso8601String().substring(0, 10)}.\nTreść: $text',
             json: true,
-            maxTokens: 400,
+            maxTokens: 1500,
           )
-          .timeout(const Duration(seconds: 12));
+          .timeout(const Duration(seconds: 15));
 
       final start = res.text.indexOf('{');
       final end = res.text.lastIndexOf('}');
@@ -183,7 +199,7 @@ Future<Receipt> parseNaturalExpense(
     }
   }
 
-  return parseExpenseOffline(text, now);
+  return offline;
 }
 
 /// Offline rule-based parser for Polish natural language purchase entries.
@@ -249,25 +265,26 @@ Receipt parseExpenseOffline(String rawText, DateTime now) {
 
   // Helper to extract a price match from a text chunk
   RegExpMatch? findPriceMatch(String chunk) {
-    // 1. Explicit currency: 15.50 zł, 150 pln, 12 zl
-    final withCurrency = RegExp(r'(\d+(?:\.\d+)?)\s*(?:zł|pln|zl)\b', caseSensitive: false).firstMatch(chunk);
+    // 1. Explicit currency: 15.50 zł, 150 pln, 12 zl (not followed by ASCII word char)
+    final withCurrency = RegExp(r'(\d+(?:\.\d+)?)\s*(?:zł|pln|zl)(?!\w)', caseSensitive: false).firstMatch(chunk);
     if (withCurrency != null) return withCurrency;
 
     // 2. Preceded by za/po: za 15.50, po 8
-    final withPreposition = RegExp(r'\b(?:za|po)\s+(\d+(?:\.\d+)?)\b', caseSensitive: false).firstMatch(chunk);
+    final withPreposition = RegExp(r'\b(?:za|po)\s+(\d+(?:\.\d+)?)(?!\w)', caseSensitive: false).firstMatch(chunk);
     if (withPreposition != null) return withPreposition;
 
     // 3. Number at the end of chunk: chleb 5, masło 7.50
-    final atEnd = RegExp(r'\b(\d+(?:\.\d+)?)\s*$', caseSensitive: false).firstMatch(chunk);
+    final atEnd = RegExp(r'(\d+(?:\.\d+)?)\s*$', caseSensitive: false).firstMatch(chunk);
     if (atEnd != null) return atEnd;
 
     // 4. Any standalone number not followed by unit of measure
-    final anyNum = RegExp(r'\b(\d+(?:\.\d+)?)(?!\s*(?:l|ml|kg|g|%|cm|m)\b)', caseSensitive: false).firstMatch(chunk);
+    final anyNum = RegExp(r'\b(\d+(?:\.\d+)?)(?!\s*(?:l|ml|kg|g|%|cm|m|szt)\b)', caseSensitive: false).firstMatch(chunk);
     return anyNum;
   }
 
   // 3. Extract items and prices
-  final chunks = t.split(RegExp(r'[,;]|\s+i\s+|\s+oraz\s+'));
+  // Split on newlines, commas, semicolons, and conjunctions ("i", "oraz")
+  final chunks = t.split(RegExp(r'[\r\n]+|[,;]|\s+i\s+|\s+oraz\s+'));
   final items = <ReceiptItem>[];
 
   for (var chunk in chunks) {
@@ -280,8 +297,9 @@ Receipt parseExpenseOffline(String rawText, DateTime now) {
         final cents = (val * 100).round();
         var name = chunk.substring(0, match.start) + chunk.substring(match.end);
         name = name
-            .replaceAll(RegExp(r'\b(?:zł|pln|zl)\b', caseSensitive: false), ' ')
-            .replaceAll(RegExp(r'\b(?:za|na|dla|w|z|do)\b', caseSensitive: false), ' ')
+            .replaceAll(RegExp(r'^(?:za|na|dla|po)\s+', caseSensitive: false), '')
+            .replaceAll(RegExp(r'[\s\-\–\—:•*]+$'), '')
+            .replaceAll(RegExp(r'^[\s\-\–\—:•*]+'), '')
             .replaceAll(RegExp(r'\s+'), ' ')
             .trim();
         if (name.isEmpty) {
@@ -307,8 +325,9 @@ Receipt parseExpenseOffline(String rawText, DateTime now) {
         final cents = (val * 100).round();
         var name = t.substring(0, match.start) + t.substring(match.end);
         name = name
-            .replaceAll(RegExp(r'\b(?:zł|pln|zl)\b', caseSensitive: false), ' ')
-            .replaceAll(RegExp(r'\b(?:za|na|dla|w|z|do)\b', caseSensitive: false), ' ')
+            .replaceAll(RegExp(r'^(?:za|na|dla|po)\s+', caseSensitive: false), '')
+            .replaceAll(RegExp(r'[\s\-\–\—:•*]+$'), '')
+            .replaceAll(RegExp(r'^[\s\-\–\—:•*]+'), '')
             .replaceAll(RegExp(r'\s+'), ' ')
             .trim();
         if (name.isEmpty) {

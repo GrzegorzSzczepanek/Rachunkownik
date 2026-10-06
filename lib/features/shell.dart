@@ -10,7 +10,7 @@ class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
 
-  void _go(int i) => shell.goBranch(i, initialLocation: i == shell.currentIndex);
+  void _go(int i) => shell.goBranch(i, initialLocation: true);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
