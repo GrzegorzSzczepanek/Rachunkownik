@@ -331,59 +331,166 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  Future<void> _editItem(ReceiptItem? item) async {
+  Future<void> _editItem(ReceiptItem? item, {bool isCopy = false}) async {
     final str = ref.read(appStringsProvider);
     final name = TextEditingController(text: item?.name ?? '');
     final price = TextEditingController(text: item == null ? '' : formatMoney(item.cents, withCurrency: false));
     var cat = item?.category ?? 'Inne';
+    int quantity = 1;
+    bool separateItems = true;
+
+    final isNew = item == null || isCopy;
+    final dialogTitle = isCopy
+        ? str.copyItem
+        : (item == null ? str.newItem : str.editItem);
+
     final res = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          title: Text(item == null ? str.newItem : str.editItem),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, autofocus: true, decoration: InputDecoration(labelText: str.itemName)),
-            const SizedBox(height: 10),
-            TextField(
-                controller: price,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: str.itemPrice, suffixText: 'zł')),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: cat,
-              items: [for (final c in defaultCategories) DropdownMenuItem(value: c, child: Text(str.categoryName(c)))],
-              onChanged: (v) => setS(() => cat = v ?? cat),
-              decoration: InputDecoration(labelText: str.category),
+        builder: (ctx, setS) {
+          final unitCents = parseMoney(price.text);
+          final hasMultiple = quantity > 1;
+          final totalPreview = (unitCents != null && hasMultiple)
+              ? formatMoney(unitCents * quantity)
+              : null;
+
+          return AlertDialog(
+            title: Text(dialogTitle),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(controller: name, autofocus: true, decoration: InputDecoration(labelText: str.itemName)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text(str.quantity, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: quantity > 1 ? () => setS(() => quantity--) : null,
+                      ),
+                      Text('$quantity', style: mono(size: 16, weight: FontWeight.w700)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => setS(() => quantity++),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: price,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setS(() {}),
+                    decoration: InputDecoration(
+                      labelText: hasMultiple ? str.unitPrice : str.itemPrice,
+                      suffixText: 'zł',
+                    ),
+                  ),
+                  if (hasMultiple && totalPreview != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, bottom: 4),
+                      child: Text(
+                        '${str.totalSummary}: $quantity × ${price.text} zł = $totalPreview',
+                        style: mono(size: 13, weight: FontWeight.w600, color: AppColors.green),
+                      ),
+                    ),
+                  if (hasMultiple)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(str.separateItems, style: const TextStyle(fontSize: 13)),
+                      value: separateItems,
+                      onChanged: (v) => setS(() => separateItems = v ?? true),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: cat,
+                    items: [for (final c in defaultCategories) DropdownMenuItem(value: c, child: Text(str.categoryName(c)))],
+                    onChanged: (v) => setS(() => cat = v ?? cat),
+                    decoration: InputDecoration(labelText: str.category),
+                  ),
+                ],
+              ),
             ),
-          ]),
-          actions: [
-            if (item != null)
-              TextButton(
+            actions: [
+              if (!isNew)
+                TextButton(
                   onPressed: () {
                     r.items.remove(item);
                     Navigator.pop(ctx, true);
                   },
-                  child: Text(str.delete)),
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
-            TextButton(
+                  child: Text(str.delete, style: const TextStyle(color: Colors.red)),
+                ),
+              if (!isNew)
+                TextButton(
+                  onPressed: () {
+                    final cents = parseMoney(price.text);
+                    if (name.text.trim().isEmpty || cents == null) return;
+                    final guessed = cat == 'Inne' ? guessCategory(name.text, store: r.store) : cat;
+                    if (hasMultiple && separateItems) {
+                      for (int k = 0; k < quantity; k++) {
+                        r.items.add(ReceiptItem(name: name.text.trim(), cents: cents, category: guessed));
+                      }
+                    } else {
+                      final totalCents = cents * quantity;
+                      r.items.add(ReceiptItem(
+                        name: hasMultiple ? '${name.text.trim()} (×$quantity)' : name.text.trim(),
+                        cents: totalCents,
+                        category: guessed,
+                      ));
+                    }
+                    Navigator.pop(ctx, true);
+                  },
+                  child: Text(str.saveAsCopy),
+                ),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+              TextButton(
                 onPressed: () {
                   final cents = parseMoney(price.text);
                   if (name.text.trim().isEmpty || cents == null) return;
-                  if (item == null) {
+                  if (isNew) {
                     final guessed = cat == 'Inne' ? guessCategory(name.text, store: r.store) : cat;
-                    r.items.add(ReceiptItem(name: name.text.trim(), cents: cents, category: guessed));
+                    if (hasMultiple && separateItems) {
+                      for (int k = 0; k < quantity; k++) {
+                        r.items.add(ReceiptItem(name: name.text.trim(), cents: cents, category: guessed));
+                      }
+                    } else {
+                      final totalCents = cents * quantity;
+                      r.items.add(ReceiptItem(
+                        name: hasMultiple ? '${name.text.trim()} (×$quantity)' : name.text.trim(),
+                        cents: totalCents,
+                        category: guessed,
+                      ));
+                    }
                   } else {
-                    item
-                      ..name = name.text.trim()
-                      ..cents = cents
-                      ..category = cat
-                      ..lowConfidence = false;
+                    if (hasMultiple && separateItems) {
+                      item
+                        ..name = name.text.trim()
+                        ..cents = cents
+                        ..category = cat
+                        ..lowConfidence = false;
+                      for (int k = 1; k < quantity; k++) {
+                        r.items.add(ReceiptItem(name: name.text.trim(), cents: cents, category: cat));
+                      }
+                    } else {
+                      final totalCents = cents * quantity;
+                      item
+                        ..name = hasMultiple ? '${name.text.trim()} (×$quantity)' : name.text.trim()
+                        ..cents = totalCents
+                        ..category = cat
+                        ..lowConfidence = false;
+                    }
                   }
                   Navigator.pop(ctx, true);
                 },
-                child: Text(str.ok)),
-          ],
-        ),
+                child: Text(str.ok),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (res == true) setState(() {});
@@ -515,27 +622,42 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                   onTap: () => _editItem(i),
                   child: Container(
                     color: i.lowConfidence ? AppColors.amberSoft : null,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: i.lowConfidence ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Expanded(child: Text(i.name, style: const TextStyle(fontSize: 16))),
-                        Pill(i.lowConfidence ? '${str.categoryName(i.category)}?' : str.categoryName(i.category),
-                            bg: i.lowConfidence ? const Color(0xFFF3DDB0) : AppColors.chip,
-                            fg: i.lowConfidence ? AppColors.amberInk : AppColors.ink),
-                        const SizedBox(width: 12),
-                        Text(formatMoney(i.cents, withCurrency: false), style: mono(size: 16, weight: FontWeight.w500)),
-                      ]),
-                      if (i.lowConfidence)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                              str.isEnglish
-                                  ? '⚠ Low recognition confidence. Verify name and category.'
-                                  : '⚠ Niska pewność odczytu. Sprawdź nazwę i kategorię.',
-                              style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              Expanded(child: Text(i.name, style: const TextStyle(fontSize: 16))),
+                              Pill(i.lowConfidence ? '${str.categoryName(i.category)}?' : str.categoryName(i.category),
+                                  bg: i.lowConfidence ? const Color(0xFFF3DDB0) : AppColors.chip,
+                                  fg: i.lowConfidence ? AppColors.amberInk : AppColors.ink),
+                              const SizedBox(width: 12),
+                              Text(formatMoney(i.cents, withCurrency: false), style: mono(size: 16, weight: FontWeight.w500)),
+                            ]),
+                            if (i.lowConfidence)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                    str.isEnglish
+                                        ? '⚠ Low recognition confidence. Verify name and category.'
+                                        : '⚠ Niska pewność odczytu. Sprawdź nazwę i kategorię.',
+                                    style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
+                              ),
+                          ]),
                         ),
-                    ]),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.copy_rounded, size: 20, color: AppColors.muted),
+                          tooltip: str.copyItem,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          onPressed: () => _editItem(i, isCopy: true),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               InkWell(

@@ -231,6 +231,11 @@ class AppStrings {
     required this.restoreDialogTitle,
     required this.restoreDialogContent,
     required this.restoreAndReplace,
+    required this.copyItem,
+    required this.saveAsCopy,
+    required this.quantity,
+    required this.unitPrice,
+    required this.separateItems,
   });
 
   const AppStrings.pl()
@@ -409,7 +414,12 @@ class AppStrings {
         backupSubject = 'Kopia zapasowa Rachunkownik',
         restoreDialogTitle = 'Przywrócić bazę danych?',
         restoreDialogContent = 'Przywrócenie kopii zapasowej zastąpi wszystkie bieżące paragony, pozycje, budżety, subskrypcje i transakcje bankowe danymi z wybranego pliku.\n\nCzy na pewno chcesz kontynuować?',
-        restoreAndReplace = 'Przywróć i zastąp';
+        restoreAndReplace = 'Przywróć i zastąp',
+        copyItem = 'Kopiuj pozycję',
+        saveAsCopy = 'Zapisz jako kopię',
+        quantity = 'Ilość',
+        unitPrice = 'Cena za sztukę',
+        separateItems = 'Dodaj jako osobne pozycje';
 
   const AppStrings.en()
       : isEnglish = true,
@@ -587,7 +597,12 @@ class AppStrings {
         backupSubject = 'Spendnik Backup',
         restoreDialogTitle = 'Restore database?',
         restoreDialogContent = 'Restoring backup will replace all current receipts, items, budgets, subscriptions and bank transactions with data from the selected file.\n\nAre you sure you want to continue?',
-        restoreAndReplace = 'Restore and replace';
+        restoreAndReplace = 'Restore and replace',
+        copyItem = 'Copy item',
+        saveAsCopy = 'Save as copy',
+        quantity = 'Quantity',
+        unitPrice = 'Unit price',
+        separateItems = 'Add as separate items';
 
   final bool isEnglish;
   final String appName;
@@ -765,6 +780,11 @@ class AppStrings {
   final String restoreDialogTitle;
   final String restoreDialogContent;
   final String restoreAndReplace;
+  final String copyItem;
+  final String saveAsCopy;
+  final String quantity;
+  final String unitPrice;
+  final String separateItems;
 
   String aiTaskLabel(AiTask t) {
     if (!isEnglish) return t.label;
