@@ -24,11 +24,22 @@ int? parseMoney(String input) {
 const _months = [
   'sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'
 ];
+const _monthsEn = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
 const _monthsFull = [
   'STYCZEŃ', 'LUTY', 'MARZEC', 'KWIECIEŃ', 'MAJ', 'CZERWIEC', 'LIPIEC', 'SIERPIEŃ',
   'WRZESIEŃ', 'PAŹDZIERNIK', 'LISTOPAD', 'GRUDZIEŃ'
 ];
+const _monthsFullEn = [
+  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST',
+  'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+];
 
-String shortDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
-String longDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
-String monthLabel(DateTime d) => '${_monthsFull[d.month - 1]} ${d.year}';
+String shortDate(DateTime d, {bool isEnglish = false}) =>
+    isEnglish ? '${d.day} ${_monthsEn[d.month - 1]}' : '${d.day} ${_months[d.month - 1]}';
+String longDate(DateTime d, {bool isEnglish = false}) =>
+    isEnglish ? '${d.day} ${_monthsEn[d.month - 1]} ${d.year}' : '${d.day} ${_months[d.month - 1]} ${d.year}';
+String monthLabel(DateTime d, {bool isEnglish = false}) =>
+    isEnglish ? '${_monthsFullEn[d.month - 1]} ${d.year}' : '${_monthsFull[d.month - 1]} ${d.year}';

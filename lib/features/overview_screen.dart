@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../ai/spending_chat.dart';
-import '../domain/retrieval.dart' show plPlural;
 import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
@@ -74,9 +73,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
       ref.read(dataVersionProvider.notifier).bump();
       setState(() => _answer = null);
       if (mounted) {
+        final str = ref.read(appStringsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cofnięto dodanie dochodu: ${inc.title}'),
+            content: Text('${str.incomeUndone}: ${inc.title}'),
             backgroundColor: AppColors.green,
           ),
         );
@@ -183,9 +183,9 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 Row(children: [
                   const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
                   const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text('Dodano dochód z czatu',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
+                  Expanded(
+                    child: Text(str.addedIncomeFromChat,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
                   ),
                   Text(
                     '+${formatMoney(_answer!.createdIncome!.cents)}',
@@ -194,12 +194,12 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 ]),
                 const SizedBox(height: 10),
                 Text(
-                  '${_answer!.createdIncome!.title} · ${shortDate(_answer!.createdIncome!.date)}',
+                  '${_answer!.createdIncome!.title} · ${shortDate(_answer!.createdIncome!.date, isEnglish: str.isEnglish)}',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Pill(_answer!.createdIncome!.category, bg: AppColors.greenSoft, fg: AppColors.green),
+                  Pill(str.categoryName(_answer!.createdIncome!.category), bg: AppColors.greenSoft, fg: AppColors.green),
                   if (_answer!.createdIncome!.note != null) ...[
                     const SizedBox(width: 8),
                     Text(_answer!.createdIncome!.note!, style: const TextStyle(color: AppColors.muted)),
@@ -233,10 +233,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 const SizedBox(height: 12),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   if (_answer!.sourceCount > 0)
-                    Pill('Źródło: ${_answer!.sourceCount} ${plPlural(_answer!.sourceCount, 'pozycja', 'pozycje', 'pozycji')}'),
+                    Pill('${str.source}: ${str.itemsCount(_answer!.sourceCount)}'),
                   _answer!.engine == 'lokalnie'
-                      ? const Pill('Obliczone na telefonie', bg: AppColors.greenSoft, fg: AppColors.green)
-                      : Pill('Model: ${_answer!.engine}', bg: AppColors.blueSoft, fg: AppColors.blue),
+                      ? Pill(str.calculatedLocally, bg: AppColors.greenSoft, fg: AppColors.green)
+                      : Pill('${str.isEnglish ? 'Model' : 'Model'}: ${_answer!.engine}', bg: AppColors.blueSoft, fg: AppColors.blue),
                 ]),
                 if (_answer!.hits.length > 1)
                   Theme(
@@ -245,14 +245,14 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                       tilePadding: EdgeInsets.zero,
                       childrenPadding: EdgeInsets.zero,
                       title:
-                          const Text('Pokaż pozycje', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
+                          Text(str.showItems, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
                       children: [
                         for (final h in _answer!.hits.take(15))
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 5),
                             child: Row(children: [
                               SizedBox(
-                                  width: 54, child: Text(shortDate(h.doc.date), style: const TextStyle(color: AppColors.muted))),
+                                  width: 54, child: Text(shortDate(h.doc.date, isEnglish: str.isEnglish), style: const TextStyle(color: AppColors.muted))),
                               Expanded(
                                 child: Text(h.doc.name == h.doc.store ? h.doc.name : '${h.doc.name} · ${h.doc.store}',
                                     maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -263,7 +263,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                         if (_answer!.hits.length > 15)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text('… i ${_answer!.hits.length - 15} więcej',
+                            child: Text('… ${str.isEnglish ? 'and' : 'i'} ${_answer!.hits.length - 15} ${str.andMore}',
                                 style: const TextStyle(color: AppColors.muted)),
                           ),
                       ],
@@ -319,7 +319,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Eyebrow('${monthLabel(s.month)} · ${str.spent}'),
+          Eyebrow('${monthLabel(s.month, isEnglish: str.isEnglish)} · ${str.spent}'),
           TextButton.icon(
             style: TextButton.styleFrom(
               foregroundColor: AppColors.green,
@@ -384,7 +384,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         const SizedBox(height: 6),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('${str.budget} ${formatMoney(s.budgetTotal)}', style: const TextStyle(color: AppColors.muted)),
-          Text(s.remaining >= 0 ? 'zostało ${formatMoney(s.remaining)}' : 'ponad budżet ${formatMoney(-s.remaining)}',
+          Text(s.remaining >= 0 ? '${str.remaining} ${formatMoney(s.remaining)}' : '${str.overBudget} ${formatMoney(-s.remaining)}',
               style: mono(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
         ]),
       ],
@@ -392,15 +392,16 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
   }
 
   Widget _budgets(BuildContext context, MonthSummary s) {
+    final str = ref.watch(appStringsProvider);
     return SectionCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('Budżety', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          TextButton(onPressed: () => _editBudgets(context, s), child: const Text('Edytuj')),
+          Text(str.budgets, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          TextButton(onPressed: () => _editBudgets(context, s), child: Text(str.edit)),
         ]),
         if (s.budgets.isEmpty)
-          const Text('Ustaw limity per kategoria, a dostaniesz alert po przekroczeniu 80%.',
-              style: TextStyle(color: AppColors.muted)),
+          Text(str.budgetsHint,
+              style: const TextStyle(color: AppColors.muted)),
         for (final b in s.budgets) ...[
           const SizedBox(height: 12),
           Builder(builder: (_) {
@@ -410,7 +411,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
             final color = warn ? AppColors.amber : AppColors.green;
             return Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text(b.category, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                Text(str.categoryName(b.category), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 Text('${formatMoney(spent, withCurrency: false)} / ${formatMoney(b.limitCents)} · ${(f * 100).round()}%',
                     style: mono(size: 13, weight: warn ? FontWeight.w700 : FontWeight.w400,
                         color: warn ? AppColors.amberInk : AppColors.muted)),
@@ -425,6 +426,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
   }
 
   Future<void> _editBudgets(BuildContext context, MonthSummary s) async {
+    final str = ref.read(appStringsProvider);
     final ctrls = {
       for (final c in defaultCategories)
         c: TextEditingController(
@@ -433,7 +435,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Budżety miesięczne'),
+        title: Text(str.monthlyBudgets),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             for (final e in ctrls.entries)
@@ -442,14 +444,18 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 child: TextField(
                   controller: e.value,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: e.key, suffixText: 'zł', hintText: 'brak limitu'),
+                  decoration: InputDecoration(
+                    labelText: str.categoryName(e.key),
+                    suffixText: 'zł',
+                    hintText: str.noLimit,
+                  ),
                 ),
               ),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.save)),
         ],
       ),
     );
@@ -463,18 +469,16 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
   }
 }
 
-class ReceiptTile extends StatelessWidget {
+class ReceiptTile extends ConsumerWidget {
   const ReceiptTile(this.r, {super.key, this.onTap, this.onLongPress});
   final Receipt r;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
   @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final days = today.difference(DateTime(r.date.year, r.date.month, r.date.day)).inDays;
-    final when = days == 0 ? 'dziś' : days == 1 ? 'wczoraj' : shortDate(r.date);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
+    final when = str.relativeDate(r.date);
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -482,12 +486,12 @@ class ReceiptTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
         child: Row(children: [
-          Initial(r.store, green: days == 0),
+          Initial(r.store, green: when == 'dziś' || when == 'today'),
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(r.store, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              Text('$when · ${r.items.length} pozycji · ${r.mainCategory}',
+              Text('$when · ${str.itemsCount(r.items.length)} · ${str.categoryName(r.mainCategory)}',
                   style: const TextStyle(color: AppColors.muted)),
             ]),
           ),

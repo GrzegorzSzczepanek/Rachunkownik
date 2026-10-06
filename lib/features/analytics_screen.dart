@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../providers.dart';
@@ -22,6 +23,7 @@ const _categoryColors = <String, Color>{
 Color categoryColor(String c) => _categoryColors[c] ?? AppColors.muted;
 
 const _shortMonths = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+const _shortMonthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /// Compact axis label: 1250 zł -> "1,3k".
 String _axis(double cents) {
@@ -49,21 +51,22 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final str = ref.watch(appStringsProvider);
     final data = ref.watch(analyticsProvider(_month));
     return Scaffold(
-      appBar: AppBar(title: const Text('Analiza')),
+      appBar: AppBar(title: Text(str.analyticsTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
         children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             IconButton.filledTonal(onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left)),
-            Text(monthLabel(_month), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(monthLabel(_month, isEnglish: str.isEnglish), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             IconButton.filledTonal(
                 onPressed: _isCurrent ? null : () => _shift(1), icon: const Icon(Icons.chevron_right)),
           ]),
           const SizedBox(height: 12),
           data.when(
-            data: _body,
+            data: (d) => _body(d, str),
             loading: () => const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
             error: (e, _) => Text('$e'),
           ),
@@ -72,27 +75,27 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _body(AnalyticsData d) {
+  Widget _body(AnalyticsData d, AppStrings str) {
     if (d.total == 0 && d.monthly.every((m) => m.value == 0)) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Text('Brak wydatków do pokazania. Dodaj paragon albo zaimportuj dane z banku.',
-            style: TextStyle(color: AppColors.muted)),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Text(str.noExpensesToAnalyze,
+            style: const TextStyle(color: AppColors.muted)),
       );
     }
     final delta = d.previousTotal == 0 ? null : (d.total - d.previousTotal) / d.previousTotal;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Eyebrow('WYDANE'),
+      Eyebrow(str.spent),
       Text(formatMoney(d.total), style: mono(size: 36)),
       const SizedBox(height: 4),
       if (delta != null)
         Text(
-          '${delta >= 0 ? '▲' : '▼'} ${(delta.abs() * 100).round()}% vs poprzedni miesiąc '
+          '${delta >= 0 ? '▲' : '▼'} ${(delta.abs() * 100).round()}% ${str.vsPreviousMonth} '
           '(${formatMoney(d.previousTotal)})',
           style: TextStyle(color: delta > 0 ? AppColors.amberInk : AppColors.green, fontWeight: FontWeight.w600),
         )
       else
-        const Text('Brak danych z poprzedniego miesiąca', style: TextStyle(color: AppColors.muted)),
+        Text(str.noPreviousMonthData, style: const TextStyle(color: AppColors.muted)),
       const SizedBox(height: 14),
       Container(
         padding: const EdgeInsets.all(14),
@@ -107,7 +110,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Dochody', style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  Text(str.incomes, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text('+${formatMoney(d.income)}',
                       style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
@@ -120,7 +123,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Bilans', style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  Text(str.balance, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
                     '${d.balance >= 0 ? '+' : ''}${formatMoney(d.balance)}',
@@ -137,18 +140,18 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
         ),
       ),
       const SizedBox(height: 20),
-      _card('Ostatnie 6 miesięcy', _monthlyBars(d)),
+      _card(str.last6Months, _monthlyBars(d, str)),
       const SizedBox(height: 16),
-      _card('Kategorie', _categories(d)),
+      _card(str.categories, _categories(d, str)),
       if (d.incomeByCategory.isNotEmpty) ...[
         const SizedBox(height: 16),
-        _card('Dochody wg kategorii', _incomeCategories(d)),
+        _card(str.incomesByCategory, _incomeCategories(d, str)),
       ],
       const SizedBox(height: 16),
-      _card('Dzień po dniu', _daily(d)),
+      _card(str.dayByDay, _daily(d, str)),
       if (d.topStores.isNotEmpty) ...[
         const SizedBox(height: 16),
-        _card('Najwięcej wydane w', _stores(d)),
+        _card(str.topMerchants, _stores(d)),
       ],
     ]);
   }
@@ -161,7 +164,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
         ]),
       );
 
-  Widget _incomeCategories(AnalyticsData d) {
+  Widget _incomeCategories(AnalyticsData d, AppStrings str) {
     final sorted = d.incomeByCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return Column(children: [
       for (final e in sorted) ...[
@@ -173,7 +176,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
               Row(children: [
                 Icon(incomeIconFor(e.key), size: 18, color: AppColors.green),
                 const SizedBox(width: 8),
-                Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(str.categoryName(e.key), style: const TextStyle(fontWeight: FontWeight.w600)),
               ]),
               Text('+${formatMoney(e.value)}',
                   style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
@@ -185,7 +188,8 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
     ]);
   }
 
-  Widget _monthlyBars(AnalyticsData d) {
+  Widget _monthlyBars(AnalyticsData d, AppStrings str) {
+    final months = str.isEnglish ? _shortMonthsEn : _shortMonths;
     final maxY = d.monthly.map((e) => e.value).fold(0, (a, b) => a > b ? a : b).toDouble();
     return SizedBox(
       height: 200,
@@ -216,7 +220,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
                 final m = d.monthly[v.toInt()].key;
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(_shortMonths[m.month - 1],
+                  child: Text(months[m.month - 1],
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: m == d.month ? FontWeight.w800 : FontWeight.w500,
@@ -247,10 +251,10 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _categories(AnalyticsData d) {
+  Widget _categories(AnalyticsData d, AppStrings str) {
     final entries = d.byCategory.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    if (entries.isEmpty) return const Text('Brak danych', style: TextStyle(color: AppColors.muted));
+    if (entries.isEmpty) return Text(str.noData, style: const TextStyle(color: AppColors.muted));
     final sum = entries.fold(0, (a, e) => a + e.value);
     return Column(children: [
       SizedBox(
@@ -276,7 +280,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
             ],
           )),
           Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(_focus ?? 'Razem', style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+            Text(_focus != null ? str.categoryName(_focus!) : str.totalSummary, style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
             Text(formatMoney(_focus == null ? sum : d.byCategory[_focus] ?? 0), style: mono(size: 18)),
           ]),
         ]),
@@ -294,7 +298,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
                   decoration: BoxDecoration(color: categoryColor(e.key), borderRadius: BorderRadius.circular(3))),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(e.key,
+                child: Text(str.categoryName(e.key),
                     style: TextStyle(
                         fontWeight: _focus == e.key ? FontWeight.w800 : FontWeight.w500, fontSize: 15)),
               ),
@@ -309,7 +313,8 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
     ]);
   }
 
-  Widget _daily(AnalyticsData d) {
+  Widget _daily(AnalyticsData d, AppStrings str) {
+    final months = str.isEnglish ? _shortMonthsEn : _shortMonths;
     final days = d.daysInMonth;
     final maxY = d.daily.values.fold(0, (a, b) => a > b ? a : b).toDouble();
     return SizedBox(
@@ -340,7 +345,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
         barTouchData: BarTouchData(
           touchTooltipData: BarTouchTooltipData(
             getTooltipItem: (group, _, rod, _) => BarTooltipItem(
-                '${group.x + 1} ${_shortMonths[d.month.month - 1]}\n${formatMoney(rod.toY.round())}',
+                '${group.x + 1} ${months[d.month.month - 1]}\n${formatMoney(rod.toY.round())}',
                 const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
           ),
         ),

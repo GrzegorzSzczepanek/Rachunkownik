@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../ai/ai_settings.dart';
 import '../ai/embeddings.dart';
 import '../ai/llm_api.dart';
+import '../core/localization.dart';
 import '../core/theme.dart';
 import '../providers.dart';
 import 'widgets.dart';
@@ -116,18 +117,23 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final str = ref.watch(appStringsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Dostawca API')),
+      appBar: AppBar(title: Text(str.apiProvider)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
         children: [
-          const Text('Dowolny punkt zgodny z OpenAI lub Anthropic, który przyjmuje obrazy.',
-              style: TextStyle(color: AppColors.muted)),
+          Text(
+            str.isEnglish
+                ? 'Any OpenAI or Anthropic compatible endpoint supporting images.'
+                : 'Dowolny punkt zgodny z OpenAI lub Anthropic, który przyjmuje obrazy.',
+            style: const TextStyle(color: AppColors.muted),
+          ),
           const SizedBox(height: 14),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final p in apiPresets)
               ChoiceChip(
-                label: Text(p.label),
+                label: Text(p.id == 'custom' ? (str.isEnglish ? 'Custom' : 'Własny') : p.label),
                 selected: cfg.presetId == p.id,
                 onSelected: (_) => _pick(p),
                 selectedColor: AppColors.ink,
@@ -139,7 +145,7 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
           const SizedBox(height: 18),
           DropdownButtonFormField<ApiFormat>(
             initialValue: cfg.format,
-            decoration: const InputDecoration(labelText: 'Format API'),
+            decoration: InputDecoration(labelText: str.isEnglish ? 'API Format' : 'Format API'),
             items: const [
               DropdownMenuItem(value: ApiFormat.openai, child: Text('OpenAI-compatible (/chat/completions)')),
               DropdownMenuItem(value: ApiFormat.anthropic, child: Text('Anthropic (/v1/messages)')),
@@ -156,24 +162,35 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
             enableSuggestions: false,
             autocorrect: false,
             decoration: InputDecoration(
-              labelText: 'Klucz API',
-              hintText: _hasKey ? '•••••••• (zapisany, wpisz nowy, aby zmienić)' : cfg.preset.needsKey ? 'wklej klucz' : 'niewymagany',
-              helperText: 'Klucz trafia do Keychain / Keystore. Nie jest zapisywany w bazie ani w logach.',
+              labelText: str.isEnglish ? 'API Key' : 'Klucz API',
+              hintText: _hasKey
+                  ? (str.isEnglish ? '•••••••• (saved, enter new to change)' : '•••••••• (zapisany, wpisz nowy, aby zmienić)')
+                  : cfg.preset.needsKey
+                      ? (str.isEnglish ? 'paste key' : 'wklej klucz')
+                      : (str.isEnglish ? 'not required' : 'niewymagany'),
+              helperText: str.isEnglish
+                  ? 'Key is stored in Keychain / Keystore. It is not saved in database or logs.'
+                  : 'Klucz trafia do Keychain / Keystore. Nie jest zapisywany w bazie ani w logach.',
               helperMaxLines: 2,
             ),
           ),
           const SizedBox(height: 14),
           TextField(controller: _model,
-              decoration: const InputDecoration(labelText: 'Model', hintText: 'nazwa modelu z obsługą obrazu')),
+              decoration: InputDecoration(
+                labelText: 'Model',
+                hintText: str.isEnglish ? 'vision-capable model name' : 'nazwa modelu z obsługą obrazu',
+              )),
           if (cfg.format == ApiFormat.openai) ...[
             const SizedBox(height: 14),
             TextField(
               controller: _embModel,
-              decoration: const InputDecoration(
-                labelText: 'Model embeddingów (opcjonalnie)',
+              decoration: InputDecoration(
+                labelText: str.isEnglish ? 'Embedding model (optional)' : 'Model embeddingów (opcjonalnie)',
                 hintText: 'np. text-embedding-3-small',
-                helperText: 'Włącza wyszukiwanie po znaczeniu, gdy zadanie „Wyszukiwanie” jest ustawione na API. '
-                    'Do dostawcy trafiają nazwy pozycji z paragonów.',
+                helperText: str.isEnglish
+                    ? 'Enables semantic search when "Search" task is set to API. Receipt item names will be sent to the provider.'
+                    : 'Włącza wyszukiwanie po znaczeniu, gdy zadanie „Wyszukiwanie” jest ustawione na API. '
+                      'Do dostawcy trafiają nazwy pozycji z paragonów.',
                 helperMaxLines: 3,
               ),
             ),
@@ -185,10 +202,10 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
               onPressed: _testing ? null : _test,
               child: _testing
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Testuj połączenie'),
+                  : Text(str.testConnection),
             ),
             const SizedBox(width: 12),
-            const Expanded(child: Text('wysyła malutki obraz testowy', style: TextStyle(color: AppColors.muted))),
+            Expanded(child: Text(str.isEnglish ? 'sends a tiny test image' : 'wysyła malutki obraz testowy', style: const TextStyle(color: AppColors.muted))),
           ]),
           if (_result != null) ...[
             const SizedBox(height: 14),
@@ -212,7 +229,7 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
               await _persist();
               if (context.mounted) Navigator.of(context).maybePop();
             },
-            child: const Text('Zapisz'),
+            child: Text(str.save),
           ),
         ],
       ),

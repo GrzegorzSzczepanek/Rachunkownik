@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../domain/models.dart';
@@ -12,6 +13,7 @@ class SubscriptionsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
     final subs = ref.watch(subscriptionsProvider).value ?? [];
     final candidates = ref.watch(subscriptionCandidatesProvider).value ?? [];
     final db = ref.read(dbProvider);
@@ -25,14 +27,14 @@ class SubscriptionsScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('Subskrypcje', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+          Text(str.tabSubscriptions, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
           IconButton.filledTonal(
-              onPressed: () => _add(context, ref), icon: const Icon(Icons.add), tooltip: 'Dodaj'),
+              onPressed: () => _add(context, ref), icon: const Icon(Icons.add), tooltip: str.addSub),
         ]),
         const SizedBox(height: 14),
-        const Eyebrow('CO MIESIĄC'),
+        Eyebrow(str.monthlyEyebrow),
         Text(formatMoney(monthly), style: mono(size: 44)),
-        Text('${formatMoney(monthly * 12)} rocznie · ${active.length} aktywne',
+        Text('${formatMoney(monthly * 12)} ${str.yearly} · ${active.length} ${str.active}',
             style: mono(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
         const SizedBox(height: 20),
         for (final c in candidates)
@@ -41,14 +43,14 @@ class SubscriptionsScreen extends ConsumerWidget {
             child: SectionCard(
               border: AppColors.amber,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('🔍 WYKRYTO AUTOMATYCZNIE',
-                    style: TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+                Text(str.detectedAutomatically,
+                    style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
                 const SizedBox(height: 10),
                 Text.rich(TextSpan(children: [
                   TextSpan(text: c.name, style: mono(size: 16)),
                   TextSpan(
-                      text: ': ${formatMoney(c.cents)}, ${c.period == BillingPeriod.monthly ? 'co miesiąc' : 'co rok'}, '
-                          '${c.occurrences} ostatnie płatności. Dodać jako subskrypcję?',
+                      text: ': ${formatMoney(c.cents)}, ${c.period == BillingPeriod.monthly ? str.everyMonth : str.everyYear}, '
+                          '${c.occurrences} ${str.candidatePrompt}',
                       style: const TextStyle(fontSize: 16)),
                 ])),
                 const SizedBox(height: 14),
@@ -60,7 +62,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                             name: c.name, cents: c.cents, period: c.period, nextDate: c.nextDate));
                         refresh();
                       },
-                      child: const Text('Dodaj'),
+                      child: Text(str.add),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -70,7 +72,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                         await db.dismissSub(c.name);
                         refresh();
                       },
-                      child: const Text('To nie ono'),
+                      child: Text(str.notThis),
                     ),
                   ),
                 ]),
@@ -79,13 +81,12 @@ class SubscriptionsScreen extends ConsumerWidget {
           ),
         SectionCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Eyebrow('NADCHODZĄCE ODNOWIENIA'),
+            Eyebrow(str.upcomingRenewals),
             if (upcoming.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text('Brak subskrypcji. Dodaj ręcznie albo poczekaj na automatyczne wykrycie '
-                    '(3 podobne płatności u tego samego sprzedawcy).',
-                    style: TextStyle(color: AppColors.muted)),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(str.noSubsHint,
+                    style: const TextStyle(color: AppColors.muted)),
               ),
             for (final s in upcoming)
               Dismissible(
@@ -110,7 +111,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(s.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                          Text('${shortDate(next)} · ${days == 0 ? 'dziś' : 'za $days dni'}',
+                          Text('${shortDate(next, isEnglish: str.isEnglish)} · ${str.inDays(days)}',
                               style: const TextStyle(color: AppColors.muted)),
                         ]),
                       ),
@@ -126,6 +127,7 @@ class SubscriptionsScreen extends ConsumerWidget {
   }
 
   Future<void> _add(BuildContext context, WidgetRef ref) async {
+    final str = ref.read(appStringsProvider);
     final name = TextEditingController();
     final price = TextEditingController();
     var period = BillingPeriod.monthly;
@@ -134,19 +136,19 @@ class SubscriptionsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          title: const Text('Nowa subskrypcja'),
+          title: Text(str.newSub),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Nazwa')),
+            TextField(controller: name, decoration: InputDecoration(labelText: str.subName)),
             const SizedBox(height: 10),
             TextField(
                 controller: price,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Kwota', suffixText: 'zł')),
+                decoration: InputDecoration(labelText: str.subAmount, suffixText: 'zł')),
             const SizedBox(height: 10),
             SegmentedButton<BillingPeriod>(
-              segments: const [
-                ButtonSegment(value: BillingPeriod.monthly, label: Text('Miesięcznie')),
-                ButtonSegment(value: BillingPeriod.yearly, label: Text('Rocznie')),
+              segments: [
+                ButtonSegment(value: BillingPeriod.monthly, label: Text(str.monthlyPeriod)),
+                ButtonSegment(value: BillingPeriod.yearly, label: Text(str.yearlyPeriod)),
               ],
               selected: {period},
               onSelectionChanged: (s) => setS(() => period = s.first),
@@ -157,12 +159,12 @@ class SubscriptionsScreen extends ConsumerWidget {
                     context: ctx, initialDate: next, firstDate: DateTime(2020), lastDate: DateTime(2100));
                 if (d != null) setS(() => next = d);
               },
-              child: Text('Następne odnowienie: ${longDate(next)}'),
+              child: Text('${str.nextRenewal}: ${longDate(next, isEnglish: str.isEnglish)}'),
             ),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Dodaj')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.add)),
           ],
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ai/categorizer.dart';
+import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../domain/models.dart';
@@ -94,14 +95,15 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
   }
 
   Future<void> _save() async {
+    final str = ref.read(appStringsProvider);
     final title = _title.text.trim();
     final cents = parseMoney(_amount.text);
     if (title.isEmpty) {
-      showError(context, 'Podaj źródło lub tytuł dochodu.');
+      showError(context, str.incomeTitleError);
       return;
     }
     if (cents == null || cents <= 0) {
-      showError(context, 'Wpisz poprawną kwotę dochodu.');
+      showError(context, str.incomeAmountError);
       return;
     }
 
@@ -131,7 +133,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Zapisano dochód: $title (${formatMoney(cents)}) [$_category]'),
+          content: Text('${str.incomeSaved}: $title (${formatMoney(cents)}) [${str.categoryName(_category)}]'),
           backgroundColor: AppColors.green,
         ),
       );
@@ -141,13 +143,14 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
   Future<void> _delete() async {
     final id = widget.initial?.id;
     if (id == null) return;
+    final str = ref.read(appStringsProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Usunąć dochód ${widget.initial!.title}?'),
+        title: Text(str.deleteIncomeConfirm(widget.initial!.title)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Usuń')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.delete)),
         ],
       ),
     );
@@ -160,6 +163,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.initial != null;
+    final str = ref.watch(appStringsProvider);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -182,7 +186,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isEdit ? 'Edytuj dochód' : 'Dodaj dochód',
+                    isEdit ? str.editIncome : str.addIncome,
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -200,7 +204,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: mono(size: 28, weight: FontWeight.w800),
               decoration: InputDecoration(
-                labelText: 'Kwota dochodu',
+                labelText: str.incomeAmount,
                 suffixText: 'zł',
                 suffixStyle: mono(size: 22, weight: FontWeight.w700),
                 hintText: '0,00',
@@ -211,15 +215,17 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
             TextField(
               controller: _title,
               decoration: InputDecoration(
-                labelText: 'Tytuł / Źródło (np. Wypłata, Zlecenie, Vinted)',
+                labelText: '${str.incomeTitle} (${str.incomeTitleHint})',
                 prefixIcon: const Icon(Icons.title_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Kategoria dochodu (wybierz lub dopasuje się automatycznie):',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+            Text(
+              str.isEnglish
+                  ? 'Income category (choose or matched automatically):'
+                  : 'Kategoria dochodu (wybierz lub dopasuje się automatycznie):',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -237,7 +243,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
                           color: _category == c ? Colors.white : AppColors.ink,
                         ),
                         const SizedBox(width: 6),
-                        Text(c),
+                        Text(str.categoryName(c)),
                       ],
                     ),
                     selected: _category == c,
@@ -281,7 +287,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
             TextField(
               controller: _note,
               decoration: InputDecoration(
-                labelText: 'Opcjonalna notatka',
+                labelText: '${str.incomeNote} (${str.incomeNoteHint})',
                 prefixIcon: const Icon(Icons.note_alt_outlined),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
               ),
@@ -298,7 +304,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
                 onPressed: _save,
                 icon: const Icon(Icons.check_rounded),
                 label: Text(
-                  isEdit ? 'Zapisz zmiany' : 'Dodaj dochód',
+                  isEdit ? str.saveChanges : str.addIncome,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -310,18 +316,16 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
   }
 }
 
-class IncomeTile extends StatelessWidget {
+class IncomeTile extends ConsumerWidget {
   const IncomeTile(this.inc, {super.key, this.onTap, this.onLongPress});
   final Income inc;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
   @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final days = today.difference(DateTime(inc.date.year, inc.date.month, inc.date.day)).inDays;
-    final when = days == 0 ? 'dziś' : days == 1 ? 'wczoraj' : shortDate(inc.date);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
+    final when = str.relativeDate(inc.date);
 
     return InkWell(
       onTap: onTap,
@@ -347,7 +351,7 @@ class IncomeTile extends StatelessWidget {
               Row(children: [
                 Text(when, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                 const Text(' · ', style: TextStyle(color: AppColors.muted)),
-                Text(inc.category,
+                Text(str.categoryName(inc.category),
                     style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w600, fontSize: 13)),
               ]),
             ]),

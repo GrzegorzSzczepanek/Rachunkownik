@@ -90,7 +90,7 @@ void main() {
         date: DateTime(2026, 10, 3),
       ));
 
-      final id3 = await db.saveIncome(Income(
+      await db.saveIncome(Income(
         title: 'Premia kwartalna',
         cents: 80000,
         category: 'Premia',

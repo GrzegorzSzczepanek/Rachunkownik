@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ai/device_check.dart';
 import '../ai/local_models.dart';
+import '../core/localization.dart';
 import '../core/theme.dart';
 import 'widgets.dart';
 
@@ -28,6 +29,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final str = ref.watch(appStringsProvider);
     final st = ref.watch(modelDownloadsProvider);
     final active = ref.watch(activeModelsProvider);
     final mgr = ref.read(modelDownloadsProvider.notifier);
@@ -37,7 +39,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
         .where((m) => st[m.id]?.state == ModelState.installed)
         .fold(0, (a, m) => a + m.totalBytes);
     return Scaffold(
-      appBar: AppBar(title: const Text('Modele lokalne')),
+      appBar: AppBar(title: Text(str.isEnglish ? 'Local models' : 'Modele lokalne')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
         children: [
@@ -45,7 +47,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Eyebrow('TO URZĄDZENIE'),
+                Eyebrow(str.isEnglish ? 'THIS DEVICE' : 'TO URZĄDZENIE'),
                 Flexible(
                   child: Text(device.name,
                       overflow: TextOverflow.ellipsis,
@@ -54,18 +56,20 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
               ]),
               const SizedBox(height: 8),
               if (!deviceLoaded)
-                const Text('Sprawdzam parametry…', style: TextStyle(color: AppColors.muted))
+                Text(str.isEnglish ? 'Checking parameters…' : 'Sprawdzam parametry…', style: const TextStyle(color: AppColors.muted))
               else ...[
-                _spec('RAM', device.totalRamBytes == null ? 'nieznany' : _gb(device.totalRamBytes!),
+                _spec('RAM', device.totalRamBytes == null ? (str.isEnglish ? 'unknown' : 'nieznany') : _gb(device.totalRamBytes!),
                     device.totalRamBytes == null
                         ? null
-                        : 'dla modelu ok. ${_gb(device.totalRamBytes! * usableRamFraction(device.os))}'),
-                _spec('Wolne miejsce', device.freeDiskBytes == null ? 'nieznane' : _gb(device.freeDiskBytes!),
-                    'modele ${_gb(installed)}'),
+                        : (str.isEnglish
+                            ? 'for model ~${_gb(device.totalRamBytes! * usableRamFraction(device.os))}'
+                            : 'dla modelu ok. ${_gb(device.totalRamBytes! * usableRamFraction(device.os))}')),
+                _spec(str.isEnglish ? 'Free space' : 'Wolne miejsce', device.freeDiskBytes == null ? (str.isEnglish ? 'unknown' : 'nieznane') : _gb(device.freeDiskBytes!),
+                    str.isEnglish ? 'models ${_gb(installed)}' : 'modele ${_gb(installed)}'),
               ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Pobieraj tylko przez Wi-Fi', style: TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(str.isEnglish ? 'Download over Wi-Fi only' : 'Pobieraj tylko przez Wi-Fi', style: const TextStyle(fontWeight: FontWeight.w600)),
                 value: _wifiOnly,
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppColors.green,
@@ -82,18 +86,22 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
             child: Column(children: [
               for (final m in modelCatalog)
                 _row(m, st[m.id] ?? ModelStatus.none, mgr, device, deviceLoaded, recommendedModelId(m.role, device) == m.id,
-                    active[m.role] == m.id),
+                    active[m.role] == m.id, str),
             ]),
           ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: AppColors.amberSoft, borderRadius: BorderRadius.circular(16)),
-            child: const Text(
-                '⚠ Modele powyżej 1 GB zużywają dużo baterii i RAM. Aplikacja zwalnia model z pamięci, gdy trafi w tło.\n\n'
-                'Werdykty „pójdzie / na styk” to szacunek z RAM i rozmiaru modelu, nie pomiar. '
-                'Pierwszy odczyt po wczytaniu modelu trwa dłużej.',
-                style: TextStyle(color: AppColors.amberInk, height: 1.4)),
+            child: Text(
+                str.isEnglish
+                    ? '⚠ Models over 1 GB use substantial battery and RAM. The app unloads the model from memory when backgrounded.\n\n'
+                      'Fit verdicts are estimates based on RAM and model size. '
+                      'The first inference after loading takes longer.'
+                    : '⚠ Modele powyżej 1 GB zużywają dużo baterii i RAM. Aplikacja zwalnia model z pamięci, gdy trafi w tło.\n\n'
+                      'Werdykty „pójdzie / na styk” to szacunek z RAM i rozmiaru modelu, nie pomiar. '
+                      'Pierwszy odczyt po wczytaniu modelu trwa dłużej.',
+                style: const TextStyle(color: AppColors.amberInk, height: 1.4)),
           ),
         ],
       ),
@@ -113,15 +121,16 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
       );
 
   Future<void> _confirmDownload(LocalModel m, ModelFit fit, ModelDownloads mgr) async {
+    final str = ref.read(appStringsProvider);
     if (fit.fit == Fit.tooHeavy || fit.fit == Fit.noDisk) {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(fit.headline),
-          content: Text('${fit.detail}\n\nPobrać mimo to?'),
+          content: Text('${fit.detail}\n\n${str.isEnglish ? "Download anyway?" : "Pobrać mimo to?"}'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Pobierz mimo to')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.isEnglish ? 'Download anyway' : 'Pobierz mimo to')),
           ],
         ),
       );
@@ -152,7 +161,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
   }
 
   Widget _row(LocalModel m, ModelStatus s, ModelDownloads mgr, DeviceProfile device,
-      bool deviceLoaded, bool recommended, bool isActive) {
+      bool deviceLoaded, bool recommended, bool isActive, AppStrings str) {
     final fit = assessModel(m, device, alreadyDownloadedBytes: s.received);
     final downloading = s.state == ModelState.downloading;
     final frac = m.totalBytes == 0 ? 0.0 : s.received / m.totalBytes;
@@ -172,15 +181,17 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
         action = FilledButton(
             style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
             onPressed: () => _confirmDownload(m, fit, mgr),
-            child: const Text('Wznów'));
+            child: Text(str.isEnglish ? 'Resume' : 'Wznów'));
       case ModelState.notInstalled:
         action = FilledButton(
             style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
             onPressed: () => _confirmDownload(m, fit, mgr),
-            child: const Text('Pobierz'));
+            child: Text(str.isEnglish ? 'Download' : 'Pobierz'));
     }
     final eta = downloading && s.bytesPerSec > 0
-        ? 'jeszcze ok. ${((m.totalBytes - s.received) / s.bytesPerSec / 60).ceil()} min'
+        ? (str.isEnglish
+            ? '~${((m.totalBytes - s.received) / s.bytesPerSec / 60).ceil()} min remaining'
+            : 'jeszcze ok. ${((m.totalBytes - s.received) / s.bytesPerSec / 60).ceil()} min')
         : '';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -191,11 +202,11 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
               Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text(m.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                 s.state == ModelState.installed
-                    ? Pill(isActive ? 'Aktywny' : 'Zainstalowany',
+                    ? Pill(isActive ? (str.isEnglish ? 'Active' : 'Aktywny') : (str.isEnglish ? 'Installed' : 'Zainstalowany'),
                         bg: AppColors.greenSoft, fg: AppColors.green)
-                    : Pill(m.role.label),
+                    : Pill(str.isEnglish ? (m.role == ModelRole.vision ? 'Vision' : 'Text') : m.role.label),
                 if (recommended && s.state != ModelState.installed)
-                  const Pill('Polecany', bg: AppColors.ink, fg: Colors.white),
+                  Pill(str.isEnglish ? 'Recommended' : 'Polecany', bg: AppColors.ink, fg: Colors.white),
               ]),
               const SizedBox(height: 4),
               Text('${m.description} · ~${_gb(m.totalBytes)}', style: const TextStyle(color: AppColors.muted)),
@@ -209,9 +220,9 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
           ProgressBar(frac),
           const SizedBox(height: 4),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('${(frac * 100).round()}% · ${_gb(s.received)} z ${_gb(m.totalBytes)}',
+            Text('${(frac * 100).round()}% · ${_gb(s.received)} ${str.isEnglish ? "of" : "z"} ${_gb(m.totalBytes)}',
                 style: mono(size: 12, weight: FontWeight.w400, color: AppColors.muted)),
-            Text(s.state == ModelState.paused ? 'wstrzymano' : eta,
+            Text(s.state == ModelState.paused ? (str.isEnglish ? 'paused' : 'wstrzymano') : eta,
                 style: mono(size: 12, weight: FontWeight.w400, color: AppColors.muted)),
           ]),
         ],
@@ -219,7 +230,10 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-                onPressed: () => mgr.setActive(m), child: Text('Użyj do: ${m.role.label.toLowerCase()}')),
+                onPressed: () => mgr.setActive(m),
+                child: Text(str.isEnglish
+                    ? 'Use for: ${m.role == ModelRole.vision ? 'vision' : 'text'}'
+                    : 'Użyj do: ${m.role.label.toLowerCase()}')),
           ),
         if (deviceLoaded && s.state != ModelState.installed) _fitBadge(fit),
         if (s.state == ModelState.failed && s.error != null)

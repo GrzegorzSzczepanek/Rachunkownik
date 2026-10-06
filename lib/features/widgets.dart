@@ -89,9 +89,17 @@ class Eyebrow extends StatelessWidget {
 
 /// Lokalnie | API switch used per AI task.
 class EngineToggle extends StatelessWidget {
-  const EngineToggle({super.key, required this.api, required this.onChanged});
+  const EngineToggle({
+    super.key,
+    required this.api,
+    required this.onChanged,
+    this.localLabel = 'Lokalnie',
+    this.apiLabel = 'API',
+  });
   final bool api;
   final ValueChanged<bool> onChanged;
+  final String localLabel;
+  final String apiLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -112,8 +120,8 @@ class EngineToggle extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: AppColors.chip, borderRadius: BorderRadius.circular(14)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        seg('Lokalnie', !api, AppColors.green, () => onChanged(false)),
-        seg('API', api, AppColors.blue, () => onChanged(true)),
+        seg(localLabel, !api, AppColors.green, () => onChanged(false)),
+        seg(apiLabel, api, AppColors.blue, () => onChanged(true)),
       ]),
     );
   }

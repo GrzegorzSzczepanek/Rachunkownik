@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../ai/ai_settings.dart';
 import '../ai/categorizer.dart';
 import '../ai/local_runtime.dart';
+import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../data/receipt_images.dart';
@@ -18,6 +19,7 @@ import 'widgets.dart';
 
 /// Entry point for the centre button: photo, gallery, manual entry or income.
 Future<void> startScan(BuildContext context) async {
+  final s = ProviderScope.containerOf(context).read(appStringsProvider);
   final choice = await showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
@@ -25,20 +27,20 @@ Future<void> startScan(BuildContext context) async {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(
             leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('Zrób zdjęcie paragonu'),
+            title: Text(s.takePhoto),
             onTap: () => Navigator.pop(ctx, 'camera')),
         ListTile(
             leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Wybierz z galerii'),
+            title: Text(s.chooseGallery),
             onTap: () => Navigator.pop(ctx, 'gallery')),
         ListTile(
             leading: const Icon(Icons.edit_outlined),
-            title: const Text('Wpisz wydatek ręcznie'),
+            title: Text(s.enterManual),
             onTap: () => Navigator.pop(ctx, 'manual')),
         ListTile(
             leading: const Icon(Icons.trending_up_rounded, color: AppColors.green),
-            title: const Text('Dodaj dochód', style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text('Wypłata, premia, przelew, zlecenie'),
+            title: Text(s.addIncome, style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(s.incomeSubtitle),
             onTap: () => Navigator.pop(ctx, 'income')),
       ]),
     ),
@@ -112,15 +114,17 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
   Future<bool> _consent(AiSettings s) async {
     final engine = widget.forceEngine ?? s.engineFor(AiTask.receiptReading);
     if (engine != AiEngine.api || !s.privacy.askBeforeSendingImage) return true;
+    final str = ref.read(appStringsProvider);
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Wysłać zdjęcie?'),
-            content: Text('Zdjęcie paragonu zostanie wysłane do ${s.api.providerLabel}. '
-                'Paragon może zawierać dane osobowe.'),
+            title: Text(str.isEnglish ? 'Send photo?' : 'Wysłać zdjęcie?'),
+            content: Text(str.isEnglish
+                ? 'Receipt photo will be sent to ${s.api.providerLabel}. The receipt may contain personal data.'
+                : 'Zdjęcie paragonu zostanie wysłane do ${s.api.providerLabel}. Paragon może zawierać dane osobowe.'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Wyślij')),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.isEnglish ? 'Send' : 'Wyślij')),
             ],
           ),
         ) ??
@@ -130,6 +134,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
   Future<void> _run() async {
     final ctrl = ref.read(aiSettingsProvider.notifier);
     final settings = ref.read(aiSettingsProvider);
+    final str = ref.read(appStringsProvider);
     if (!await _consent(settings)) {
       if (mounted) Navigator.pop(context);
       return;
@@ -141,8 +146,9 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
       if (engine == AiEngine.local) {
         run = run.timeout(_localTimeout, onTimeout: () {
           ref.read(localRuntimeProvider).release();
-          throw TimeoutException('Lokalny odczyt trwa zbyt długo (ponad ${_localTimeout.inMinutes} min). '
-              'Ten telefon może być za wolny dla wybranego modelu.');
+          throw TimeoutException(str.isEnglish
+              ? 'Local recognition is taking too long (over ${_localTimeout.inMinutes} min). This device might be too slow for this model.'
+              : 'Lokalny odczyt trwa zbyt długo (ponad ${_localTimeout.inMinutes} min). Ten telefon może być za wolny dla wybranego modelu.');
         });
       }
       final res = await run;
@@ -164,8 +170,9 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(aiSettingsProvider);
+    final str = ref.watch(appStringsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Czytam paragon')),
+      appBar: AppBar(title: Text(str.isEnglish ? 'Reading receipt' : 'Czytam paragon')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -178,9 +185,12 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                   const SizedBox(height: 8),
                   Text(
                     (widget.forceEngine ?? settings.engineFor(AiTask.receiptReading)) == AiEngine.local
-                        ? 'Wczytuję model i czytam paragon na telefonie. '
-                            'Pierwszy odczyt trwa dłużej, bo model musi trafić do pamięci.'
-                        : 'Czytam paragon przez ${settings.api.providerLabel}…',
+                        ? (str.isEnglish
+                            ? 'Loading model and reading receipt on device. First run takes longer as the model loads into RAM.'
+                            : 'Wczytuję model i czytam paragon na telefonie. Pierwszy odczyt trwa dłużej, bo model musi trafić do pamięci.')
+                        : (str.isEnglish
+                            ? 'Reading receipt via ${settings.api.providerLabel}…'
+                            : 'Czytam paragon przez ${settings.api.providerLabel}…'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.muted),
                   ),
@@ -188,7 +198,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(minimumSize: const Size(160, 48)),
                     onPressed: _cancel,
-                    child: const Text('Anuluj'),
+                    child: Text(str.cancel),
                   ),
                 ])
               : Column(mainAxisSize: MainAxisSize.min, children: [
@@ -204,7 +214,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                           MaterialPageRoute(
                               builder: (_) => ProcessingScreen(
                                   image: widget.image, forceEngine: AiEngine.api))),
-                      child: Text('Spróbuj przez API (${settings.api.providerLabel})'),
+                      child: Text('${str.tryViaApi} (${settings.api.providerLabel})'),
                     ),
                   const SizedBox(height: 10),
                   OutlinedButton(
@@ -215,7 +225,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                                 initial: Receipt(
                                     store: '', date: DateTime.now(), totalCents: 0, items: []),
                                 image: widget.image))),
-                    child: const Text('Wpisz ręcznie'),
+                    child: Text(str.typeManually),
                   ),
                 ]),
         ),
@@ -260,11 +270,12 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
   }
 
   Future<void> _editTotal() async {
+    final str = ref.read(appStringsProvider);
     final c = TextEditingController(text: formatMoney(_total, withCurrency: false).replaceAll('\u00A0', ''));
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Suma paragonu'),
+        title: Text(str.receiptTotal),
         content: TextField(
           controller: c,
           autofocus: true,
@@ -272,8 +283,8 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
           decoration: const InputDecoration(suffixText: 'zł'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('OK')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.ok)),
         ],
       ),
     );
@@ -301,14 +312,15 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
   }
 
   Future<void> _delete() async {
+    final str = ref.read(appStringsProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Usunąć paragon ${r.store}?'),
-        content: const Text('Zniknie też zapisane zdjęcie.'),
+        title: Text(str.deleteReceiptConfirm(r.store)),
+        content: Text(str.deleteReceiptSub),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Usuń')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.delete)),
         ],
       ),
     );
@@ -320,6 +332,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
   }
 
   Future<void> _editItem(ReceiptItem? item) async {
+    final str = ref.read(appStringsProvider);
     final name = TextEditingController(text: item?.name ?? '');
     final price = TextEditingController(text: item == null ? '' : formatMoney(item.cents, withCurrency: false));
     var cat = item?.category ?? 'Inne';
@@ -327,20 +340,20 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          title: Text(item == null ? 'Nowa pozycja' : 'Edytuj pozycję'),
+          title: Text(item == null ? str.newItem : str.editItem),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, autofocus: true, decoration: const InputDecoration(labelText: 'Nazwa')),
+            TextField(controller: name, autofocus: true, decoration: InputDecoration(labelText: str.itemName)),
             const SizedBox(height: 10),
             TextField(
                 controller: price,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Kwota', suffixText: 'zł')),
+                decoration: InputDecoration(labelText: str.itemPrice, suffixText: 'zł')),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: cat,
-              items: [for (final c in defaultCategories) DropdownMenuItem(value: c, child: Text(c))],
+              items: [for (final c in defaultCategories) DropdownMenuItem(value: c, child: Text(str.categoryName(c)))],
               onChanged: (v) => setS(() => cat = v ?? cat),
-              decoration: const InputDecoration(labelText: 'Kategoria'),
+              decoration: InputDecoration(labelText: str.category),
             ),
           ]),
           actions: [
@@ -350,8 +363,8 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                     r.items.remove(item);
                     Navigator.pop(ctx, true);
                   },
-                  child: const Text('Usuń')),
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+                  child: Text(str.delete)),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
             TextButton(
                 onPressed: () {
                   final cents = parseMoney(price.text);
@@ -368,7 +381,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                   }
                   Navigator.pop(ctx, true);
                 },
-                child: const Text('OK')),
+                child: Text(str.ok)),
           ],
         ),
       ),
@@ -377,10 +390,11 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
   }
 
   Future<void> _save() async {
-    r.store = _store.text.trim().isEmpty ? 'Nieznany sklep' : _store.text.trim();
+    final str = ref.read(appStringsProvider);
+    r.store = _store.text.trim().isEmpty ? (str.isEnglish ? 'Unknown store' : 'Nieznany sklep') : _store.text.trim();
     r.totalCents = _total;
     if (r.totalCents <= 0) {
-      showError(context, 'Dodaj co najmniej jedną pozycję z kwotą.');
+      showError(context, str.needAtLeastOneItem);
       return;
     }
     final db = ref.read(dbProvider);
@@ -402,6 +416,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(aiSettingsProvider);
+    final str = ref.watch(appStringsProvider);
     final canRetry = !_editing &&
         widget.image != null &&
         r.source == ReadSource.local &&
@@ -409,10 +424,10 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
     final low = r.items.where((i) => i.lowConfidence).length;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_editing ? 'Paragon' : 'Sprawdź paragon'),
+        title: Text(_editing ? str.receiptTitle : str.reviewTitle),
         actions: [
           if (_editing)
-            IconButton(onPressed: _delete, icon: const Icon(Icons.delete_outline), tooltip: 'Usuń paragon'),
+            IconButton(onPressed: _delete, icon: const Icon(Icons.delete_outline), tooltip: str.deleteReceipt),
         ],
       ),
       body: ListView(
@@ -420,12 +435,12 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
         children: [
           SectionCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Eyebrow('SKLEP'),
+              Eyebrow(str.storeLabel),
               TextField(
                 controller: _store,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                decoration: const InputDecoration(
-                    hintText: 'Nazwa sklepu', border: InputBorder.none, filled: false, enabledBorder: InputBorder.none),
+                decoration: InputDecoration(
+                    hintText: str.storeName, border: InputBorder.none, filled: false, enabledBorder: InputBorder.none),
               ),
               InkWell(
                 onTap: () async {
@@ -436,7 +451,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                       lastDate: DateTime.now().add(const Duration(days: 1)));
                   if (d != null) setState(() => r.date = d);
                 },
-                child: Text('${longDate(r.date)} · ${r.items.length} pozycji  ✎',
+                child: Text('${longDate(r.date, isEnglish: str.isEnglish)} · ${str.itemsCount(r.items.length)}  ✎',
                     style: const TextStyle(color: AppColors.muted)),
               ),
               const SizedBox(height: 8),
@@ -462,10 +477,10 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                   width: double.infinity,
                   child: Stack(fit: StackFit.expand, children: [
                     Image.memory(_image!, fit: BoxFit.cover, alignment: Alignment.topCenter),
-                    const Positioned(
+                    Positioned(
                       right: 10,
                       bottom: 10,
-                      child: Pill('Powiększ zdjęcie', bg: Colors.white, fg: AppColors.ink),
+                      child: Pill(str.isEnglish ? 'Zoom photo' : 'Powiększ zdjęcie', bg: Colors.white, fg: AppColors.ink),
                     ),
                   ]),
                 ),
@@ -475,7 +490,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
           if (_scanned) ...[
             const SizedBox(height: 14),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Pill(r.source == ReadSource.local ? 'Lokalnie' : 'API',
+              Pill(r.source == ReadSource.local ? str.localToggle : str.apiToggle,
                   bg: r.source == ReadSource.local ? AppColors.greenSoft : AppColors.blueSoft,
                   fg: r.source == ReadSource.local ? AppColors.green : AppColors.blue),
               const SizedBox(width: 12),
@@ -490,10 +505,10 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
           SectionCard(
             padding: EdgeInsets.zero,
             child: Column(children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [Eyebrow('POZYCJE'), Eyebrow('KWOTA')]),
+                    children: [Eyebrow(str.itemsLabel), Eyebrow(str.isEnglish ? 'AMOUNT' : 'KWOTA')]),
               ),
               for (final i in r.items)
                 InkWell(
@@ -505,17 +520,20 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         Expanded(child: Text(i.name, style: const TextStyle(fontSize: 16))),
-                        Pill(i.lowConfidence ? '${i.category}?' : i.category,
+                        Pill(i.lowConfidence ? '${str.categoryName(i.category)}?' : str.categoryName(i.category),
                             bg: i.lowConfidence ? const Color(0xFFF3DDB0) : AppColors.chip,
                             fg: i.lowConfidence ? AppColors.amberInk : AppColors.ink),
                         const SizedBox(width: 12),
                         Text(formatMoney(i.cents, withCurrency: false), style: mono(size: 16, weight: FontWeight.w500)),
                       ]),
                       if (i.lowConfidence)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Text('⚠ Niska pewność odczytu. Sprawdź nazwę i kategorię.',
-                              style: TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                              str.isEnglish
+                                  ? '⚠ Low recognition confidence. Verify name and category.'
+                                  : '⚠ Niska pewność odczytu. Sprawdź nazwę i kategorię.',
+                              style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
                         ),
                     ]),
                   ),
@@ -525,10 +543,10 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(18),
                   decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
-                  child: const Row(children: [
-                    Icon(Icons.add, color: AppColors.green),
-                    SizedBox(width: 8),
-                    Text('Dodaj pozycję', style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
+                  child: Row(children: [
+                    const Icon(Icons.add, color: AppColors.green),
+                    const SizedBox(width: 8),
+                    Text(str.addItem, style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
                   ]),
                 ),
               ),
@@ -537,20 +555,31 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
           const SizedBox(height: 12),
           if (_scanned || _totalOverride != null)
             r.itemsSum == _total
-                ? Text('✓ Suma pozycji ${formatMoney(r.itemsSum, withCurrency: false)} = suma paragonu ${formatMoney(_total, withCurrency: false)}',
+                ? Text(
+                    str.isEnglish
+                        ? '✓ Items total ${formatMoney(r.itemsSum, withCurrency: false)} = receipt total ${formatMoney(_total, withCurrency: false)}'
+                        : '✓ Suma pozycji ${formatMoney(r.itemsSum, withCurrency: false)} = suma paragonu ${formatMoney(_total, withCurrency: false)}',
                     style: mono(size: 13, weight: FontWeight.w500, color: AppColors.green))
-                : Text('⚠ Suma pozycji ${formatMoney(r.itemsSum, withCurrency: false)} ≠ suma paragonu ${formatMoney(_total, withCurrency: false)}. Sprawdź pozycje.',
+                : Text(
+                    str.isEnglish
+                        ? '⚠ Items total ${formatMoney(r.itemsSum, withCurrency: false)} ≠ receipt total ${formatMoney(_total, withCurrency: false)}. Please check items.'
+                        : '⚠ Suma pozycji ${formatMoney(r.itemsSum, withCurrency: false)} ≠ suma paragonu ${formatMoney(_total, withCurrency: false)}. Sprawdź pozycje.',
                     style: mono(size: 13, weight: FontWeight.w600, color: AppColors.amberInk)),
           if (low > 0)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text('$low pozycji do sprawdzenia', style: const TextStyle(color: AppColors.amberInk)),
+              child: Text(
+                  str.isEnglish ? '$low items to check' : '$low pozycji do sprawdzenia',
+                  style: const TextStyle(color: AppColors.amberInk)),
             ),
           const SizedBox(height: 20),
           if (canRetry) ...[
             OutlinedButton.icon(
               icon: const Icon(Icons.cloud_outlined),
-              label: Text('Ponów przez API (wyśle zdjęcie do ${settings.api.providerLabel})',
+              label: Text(
+                  str.isEnglish
+                      ? 'Retry via API (sends photo to ${settings.api.providerLabel})'
+                      : 'Ponów przez API (wyśle zdjęcie do ${settings.api.providerLabel})',
                   textAlign: TextAlign.center),
               onPressed: () => Navigator.pushReplacement(
                   context,
@@ -559,7 +588,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
             ),
             const SizedBox(height: 12),
           ],
-          FilledButton(onPressed: _save, child: Text(_editing ? 'Zapisz zmiany' : 'Zapisz paragon')),
+          FilledButton(onPressed: _save, child: Text(_editing ? str.saveChanges : str.saveReceipt)),
         ],
       ),
     );

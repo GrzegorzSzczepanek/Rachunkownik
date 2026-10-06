@@ -15,13 +15,6 @@ import '../notifications/notification_sync.dart';
 import 'data_actions.dart';
 import 'widgets.dart';
 
-const _localDetail = {
-  AiTask.receiptReading: 'Model z obsługą obrazu (pobierz w Modelach lokalnych)',
-  AiTask.categorization: 'Reguły słownikowe + opcjonalnie model tekstowy',
-  AiTask.embeddings: 'Wyszukiwanie w kodzie: odmiana, literówki, synonimy (bez modelu)',
-  AiTask.chat: 'Wymaga dużego modelu. Zwykle lepiej API',
-};
-
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -43,7 +36,7 @@ class SettingsScreen extends ConsumerWidget {
         Text(str.tabSettings, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
         Text(
-          str.isEnglish ? 'Preferences, security, backups and AI' : 'Preferencje, bezpieczeństwo, kopie danych i AI',
+          str.settingsSubtitle,
           style: const TextStyle(color: AppColors.muted, fontSize: 16),
         ),
         const SizedBox(height: 16),
@@ -62,7 +55,7 @@ class SettingsScreen extends ConsumerWidget {
             const Divider(),
             _link(str.exportCsv, '', () => exportCsv(context, ref), icon: Icons.download_outlined),
             const Divider(),
-            _link('Import z banku (CSV)', '', () => context.push('/import'), icon: Icons.upload_file_outlined),
+            _link(str.bankImportCsv, '', () => context.push('/import'), icon: Icons.upload_file_outlined),
             const Divider(),
             _link(str.analytics, '', () => context.push('/analytics'), icon: Icons.bar_chart_outlined),
           ]),
@@ -71,7 +64,7 @@ class SettingsScreen extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
-            str.isEnglish ? 'Artificial Intelligence (AI)' : 'Sztuczna inteligencja (AI)',
+            str.aiSection,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
         ),
@@ -82,13 +75,20 @@ class SettingsScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(16)),
           child: Text(
             apiTasks.isEmpty
-                ? 'Wszystko zostaje na telefonie. Nic nie jest wysyłane na serwery.'
-                : 'Do $provider trafia: ${apiTasks.map((t) => switch (t) {
-                      AiTask.receiptReading => 'zdjęcia paragonów',
-                      AiTask.categorization => 'nazwy pozycji',
-                      AiTask.embeddings => 'treść pozycji',
-                      AiTask.chat => 'treść pytania i dopasowane pozycje',
-                    }).join(', ')}.',
+                ? str.aiAllLocal
+                : (str.isEnglish
+                    ? 'Sent to $provider: ${apiTasks.map((t) => switch (t) {
+                          AiTask.receiptReading => 'receipt photos',
+                          AiTask.categorization => 'item names',
+                          AiTask.embeddings => 'item text',
+                          AiTask.chat => 'question & matching items',
+                        }).join(', ')}.'
+                    : 'Do $provider trafia: ${apiTasks.map((t) => switch (t) {
+                          AiTask.receiptReading => 'zdjęcia paragonów',
+                          AiTask.categorization => 'nazwy pozycji',
+                          AiTask.embeddings => 'treść pozycji',
+                          AiTask.chat => 'treść pytania i dopasowane pozycje',
+                        }).join(', ')}.'),
             style: TextStyle(color: apiTasks.isEmpty ? AppColors.green : AppColors.blue, height: 1.4),
           ),
         ),
@@ -96,10 +96,10 @@ class SettingsScreen extends ConsumerWidget {
         SectionCard(
           padding: EdgeInsets.zero,
           child: Column(children: [
-            _link('Dostawca API', '$provider${s.api.model.isEmpty ? '' : ' · ${s.api.model}'}',
+            _link(str.apiProvider, '$provider${s.api.model.isEmpty ? '' : ' · ${s.api.model}'}',
                 () => context.go('/settings/api'), icon: Icons.cloud_outlined),
             const Divider(),
-            _link('Modele lokalne i pobieranie', _gb(installed), () => context.go('/settings/models'), icon: Icons.memory_outlined),
+            _link(str.localModels, _gb(installed), () => context.go('/settings/models'), icon: Icons.memory_outlined),
           ]),
         ),
         const SizedBox(height: 12),
@@ -111,8 +111,8 @@ class SettingsScreen extends ConsumerWidget {
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
               leading: const Icon(Icons.tune_rounded, color: AppColors.green),
-              title: const Text('Silniki per zadanie', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              subtitle: const Text('Wybierz silnik dla OCR, kategoryzacji i czatu', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+              title: Text(str.enginesPerTask, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              subtitle: Text(str.enginesPerTaskSub, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
               children: [
                 for (final t in AiTask.values) ...[
                   const Divider(),
@@ -120,8 +120,10 @@ class SettingsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
-                        Expanded(child: Text(t.label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                        Expanded(child: Text(str.aiTaskLabel(t), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
                         EngineToggle(
+                          localLabel: str.localToggle,
+                          apiLabel: str.apiToggle,
                           api: s.engineFor(t) == AiEngine.api,
                           onChanged: (api) => ctrl.setEngine(t, api ? AiEngine.api : AiEngine.local),
                         ),
@@ -131,10 +133,12 @@ class SettingsScreen extends ConsumerWidget {
                         s.engineFor(t) == AiEngine.api
                             ? (t == AiTask.embeddings
                                 ? (s.api.embeddingModel.isEmpty
-                                    ? '$provider · ustaw model embeddingów w Dostawcy API'
+                                    ? (str.isEnglish ? '$provider · configure embedding model in API Provider' : '$provider · ustaw model embeddingów w Dostawcy API')
                                     : '$provider · ${s.api.embeddingModel}')
-                                : '$provider${s.api.model.isEmpty ? ' · skonfiguruj model' : ' · ${s.api.model}'}')
-                            : _localDetail[t]!,
+                                : (s.api.model.isEmpty
+                                    ? (str.isEnglish ? '$provider · configure model' : '$provider · skonfiguruj model')
+                                    : '$provider · ${s.api.model}'))
+                            : str.localDetail(t),
                         style: const TextStyle(color: AppColors.muted, fontSize: 13),
                       ),
                     ]),
@@ -148,20 +152,24 @@ class SettingsScreen extends ConsumerWidget {
         SectionCard(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Column(children: [
-            _toggle('Maskuj numer karty, PESEL i dane kontaktowe',
-                'Dotyczy tekstu (OCR, kontekst czatu). Zdjęć nie zamazuje.',
+            _toggle(str.privacyMaskTitle,
+                str.privacyMaskSub,
                 s.privacy.maskPersonalData, (v) => ctrl.setPrivacy(s.privacy.copyWith(mask: v))),
             const Divider(),
-            _toggle('Pytaj o zgodę przed każdym wysłaniem zdjęcia',
-                'Z nazwą dostawcy: „Zdjęcie paragonu zostanie wysłane do $provider”.',
+            _toggle(str.privacyConsentTitle,
+                str.isEnglish
+                    ? 'With provider name: “Receipt photo will be sent to $provider”.'
+                    : 'Z nazwą dostawcy: „Zdjęcie paragonu zostanie wysłane do $provider”.',
                 s.privacy.askBeforeSendingImage, (v) => ctrl.setPrivacy(s.privacy.copyWith(ask: v))),
             const Divider(),
-            _toggle('Proponuj ponowną próbę przez API przy niskiej pewności',
-                'Tylko jako propozycja na ekranie sprawdzania paragonu.',
+            _toggle(str.privacyRetryTitle,
+                str.privacyRetrySub,
                 s.privacy.suggestApiRetry, (v) => ctrl.setPrivacy(s.privacy.copyWith(retry: v))),
             const Divider(),
-            _toggle('Pokazuj licznik tokenów',
-                'W tym miesiącu: ${s.monthlyTokens} tokenów przez API.',
+            _toggle(str.privacyTokensTitle,
+                str.isEnglish
+                    ? 'This month: ${s.monthlyTokens} tokens via API.'
+                    : 'W tym miesiącu: ${s.monthlyTokens} tokenów przez API.',
                 s.privacy.showTokenCounter, (v) => ctrl.setPrivacy(s.privacy.copyWith(tokens: v))),
           ]),
         ),
@@ -226,7 +234,8 @@ class _NotificationsCardState extends ConsumerState<_NotificationsCard> {
       final ok = await ref.read(notificationGatewayProvider).requestPermission();
       if (!ok) {
         if (mounted) {
-          showError(context, 'Brak zgody na powiadomienia. Włącz je dla aplikacji w ustawieniach systemu.');
+          final str = ref.read(appStringsProvider);
+          showError(context, str.notifPermissionDenied);
         }
         return;
       }
@@ -245,17 +254,18 @@ class _NotificationsCardState extends ConsumerState<_NotificationsCard> {
 
   @override
   Widget build(BuildContext context) {
+    final str = ref.watch(appStringsProvider);
     return SectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 12, bottom: 4),
-          child: Text('Powiadomienia', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: Text(str.notifications, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Przypomnienia o odnowieniu subskrypcji', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('Rano, przed dniem płatności.'),
+          title: Text(str.notifSubsTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(str.notifSubsSub),
           value: _subs,
           activeThumbColor: Colors.white,
           activeTrackColor: AppColors.green,
@@ -266,12 +276,12 @@ class _NotificationsCardState extends ConsumerState<_NotificationsCard> {
             padding: const EdgeInsets.only(bottom: 8),
             child: DropdownButtonFormField<int>(
               initialValue: _days,
-              decoration: const InputDecoration(labelText: 'Przypomnij'),
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('w dniu płatności')),
-                DropdownMenuItem(value: 1, child: Text('1 dzień wcześniej')),
-                DropdownMenuItem(value: 2, child: Text('2 dni wcześniej')),
-                DropdownMenuItem(value: 3, child: Text('3 dni wcześniej')),
+              decoration: InputDecoration(labelText: str.notifRemind),
+              items: [
+                DropdownMenuItem(value: 0, child: Text(str.onPaymentDay)),
+                DropdownMenuItem(value: 1, child: Text(str.daysBefore(1))),
+                DropdownMenuItem(value: 2, child: Text(str.daysBefore(2))),
+                DropdownMenuItem(value: 3, child: Text(str.daysBefore(3))),
               ],
               onChanged: (v) => v == null ? null : _set(days: v),
             ),
@@ -279,8 +289,8 @@ class _NotificationsCardState extends ConsumerState<_NotificationsCard> {
         const Divider(),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Alerty budżetowe', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('Po przekroczeniu 80% i 100% budżetu kategorii.'),
+          title: Text(str.notifBudgetTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(str.notifBudgetSub),
           value: _budget,
           activeThumbColor: Colors.white,
           activeTrackColor: AppColors.green,
@@ -296,27 +306,28 @@ class _SecurityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
     final lockEnabled = ref.watch(biometricLockProvider);
     final notifier = ref.read(biometricLockProvider.notifier);
 
     return SectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 12, bottom: 4),
-          child: Text('Bezpieczeństwo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: Text(str.security, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Blokada biometryczna', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('Wymagaj Face ID, odcisku palca lub kodu PIN przy uruchomieniu aplikacji.'),
+          title: Text(str.biometricLock, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(str.biometricLockSub),
           value: lockEnabled,
           activeThumbColor: Colors.white,
           activeTrackColor: AppColors.green,
           onChanged: (val) async {
             final ok = await notifier.setEnabled(val);
             if (!ok && context.mounted) {
-              showError(context, 'Weryfikacja biometryczna nie powiodła się.');
+              showError(context, str.biometricAuthFailed);
             }
           },
         ),
@@ -337,6 +348,7 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
 
   Future<void> _check() async {
     setState(() => _checking = true);
+    final str = ref.read(appStringsProvider);
     try {
       final client = ref.read(appUpdateClientProvider);
       final update = await client.checkForUpdate();
@@ -345,16 +357,16 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
         showUpdateDialog(context, update);
       } else if (update != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Masz najnowszą wersję aplikacji ($appVersion).'),
+          SnackBar(
+            content: Text('${str.updatesUpToDate} ($appVersion).'),
             backgroundColor: AppColors.green,
           ),
         );
       } else {
-        showError(context, 'Nie udało się połączyć z GitHubem.');
+        showError(context, str.githubError);
       }
     } catch (e) {
-      if (mounted) showError(context, 'Błąd sprawdzania aktualizacji: $e');
+      if (mounted) showError(context, str.updateError(e));
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -369,7 +381,7 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           title: Text(str.updates, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          subtitle: Text('Wersja $appVersion · ${str.updatesSub}'),
+          subtitle: Text('${str.versionLabel} $appVersion · ${str.updatesSub}'),
           trailing: _checking
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.refresh_rounded, color: AppColors.green),

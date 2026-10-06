@@ -42,6 +42,40 @@ void main() {
       expect(isEnglishLocale(AppLanguage.en), isTrue);
       expect(isEnglishLocale(AppLanguage.pl), isFalse);
     });
+
+    test('categoryName translates expense and income categories in English', () {
+      const en = AppStrings.en();
+      expect(en.categoryName('Jedzenie'), 'Food');
+      expect(en.categoryName('Dom'), 'Home');
+      expect(en.categoryName('Transport'), 'Transport');
+      expect(en.categoryName('Rozrywka'), 'Entertainment');
+      expect(en.categoryName('Zdrowie'), 'Health');
+      expect(en.categoryName('Ubrania'), 'Clothing');
+      expect(en.categoryName('Inne'), 'Other');
+      expect(en.categoryName('Wynagrodzenie'), 'Salary');
+      expect(en.categoryName('Zlecenie'), 'Freelance');
+      expect(en.categoryName('Premia'), 'Bonus');
+      expect(en.categoryName('Zwrot'), 'Refund');
+      expect(en.categoryName('Inwestycje'), 'Investments');
+      expect(en.categoryName('Prezent'), 'Gift');
+      expect(en.categoryName('CustomCategory'), 'CustomCategory');
+
+      const pl = AppStrings.pl();
+      expect(pl.categoryName('Jedzenie'), 'Jedzenie');
+      expect(pl.categoryName('Wynagrodzenie'), 'Wynagrodzenie');
+    });
+
+    test('relativeDate outputs English or Polish labels', () {
+      const en = AppStrings.en();
+      const pl = AppStrings.pl();
+      final today = DateTime.now();
+      final yesterday = today.subtract(const Duration(days: 1));
+
+      expect(en.relativeDate(today), 'today');
+      expect(pl.relativeDate(today), 'dziś');
+      expect(en.relativeDate(yesterday), 'yesterday');
+      expect(pl.relativeDate(yesterday), 'wczoraj');
+    });
   });
 
   group('AppLanguageNotifier persistence', () {

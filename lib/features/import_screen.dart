@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../domain/bank_import.dart';
@@ -33,8 +34,9 @@ class _ImportState extends ConsumerState<ImportScreen> {
 
   Future<void> _pick() async {
     try {
+      final str = ref.read(appStringsProvider);
       final file = await FilePicker.pickFile(
-        dialogTitle: 'Wybierz plik CSV z banku',
+        dialogTitle: str.isEnglish ? 'Select bank CSV file' : 'Wybierz plik CSV z banku',
         type: FileType.custom,
         allowedExtensions: const ['csv', 'txt'],
       );
@@ -75,9 +77,10 @@ class _ImportState extends ConsumerState<ImportScreen> {
       _replan();
     } catch (e) {
       if (mounted) {
+        final str = ref.read(appStringsProvider);
         setState(() {
           _busy = false;
-          _error = 'Nie udało się wczytać pliku: $e';
+          _error = str.isEnglish ? 'Failed to load file: $e' : 'Nie udało się wczytać pliku: $e';
         });
       }
     }
@@ -92,11 +95,14 @@ class _ImportState extends ConsumerState<ImportScreen> {
     final layout =
         CsvLayout(headerRow: _headerRow, dateCol: d, descCols: _descCols, amountCol: _amountCol);
     final rows = extractRows(_rows, layout);
+    final str = ref.read(appStringsProvider);
     setState(() {
       _plan = planImport(rows, _receipts, _known,
           addUnmatched: _addUnmatched, claimedReceiptIds: _claimed);
       _error = rows.isEmpty
-          ? 'Nie znaleziono żadnych transakcji. Sprawdź wybór kolumn (data, kwota, opis).'
+          ? (str.isEnglish
+              ? 'No transactions found. Check selected columns (date, amount, description).'
+              : 'Nie znaleziono żadnych transakcji. Sprawdź wybór kolumn (data, kwota, opis).')
           : null;
     });
   }
@@ -108,20 +114,23 @@ class _ImportState extends ConsumerState<ImportScreen> {
     await ref.read(dbProvider).saveImport(plan);
     ref.read(dataVersionProvider.notifier).bump();
     if (!mounted) return;
+    final str = ref.read(appStringsProvider);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         behavior: SnackBarBehavior.floating,
-        content: Text('Zaimportowano ${plan.newReceipts.length} wydatków, '
-            'dopasowano ${plan.matched} do paragonów.')));
+        content: Text(str.isEnglish
+            ? 'Imported ${plan.newReceipts.length} expenses, matched ${plan.matched} to receipts.'
+            : 'Zaimportowano ${plan.newReceipts.length} wydatków, dopasowano ${plan.matched} do paragonów.')));
     Navigator.of(context).pop();
   }
 
   List<DropdownMenuItem<int>> _colItems() {
     final header = _headerRow < _rows.length ? _rows[_headerRow] : const <String>[];
+    final str = ref.read(appStringsProvider);
     return [
       for (var i = 0; i < header.length; i++)
         DropdownMenuItem(
             value: i,
-            child: Text(header[i].isEmpty ? 'Kolumna ${i + 1}' : header[i].replaceAll('#', ''),
+            child: Text(header[i].isEmpty ? (str.isEnglish ? 'Column ${i + 1}' : 'Kolumna ${i + 1}') : header[i].replaceAll('#', ''),
                 overflow: TextOverflow.ellipsis)),
     ];
   }
@@ -129,21 +138,24 @@ class _ImportState extends ConsumerState<ImportScreen> {
   @override
   Widget build(BuildContext context) {
     final plan = _plan;
+    final str = ref.watch(appStringsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Import z banku')),
+      appBar: AppBar(title: Text(str.isEnglish ? 'Bank import' : 'Import z banku')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
         children: [
-          const Text(
-            'Wyeksportuj historię z bankowości internetowej do CSV (mBank, PKO BP, ING, Pekao, Santander '
-            'i podobne). Plik jest czytany tylko na telefonie.',
-            style: TextStyle(color: AppColors.muted, height: 1.4),
+          Text(
+            str.isEnglish
+                ? 'Export your online banking history to CSV. The file is processed only on your phone.'
+                : 'Wyeksportuj historię z bankowości internetowej do CSV (mBank, PKO BP, ING, Pekao, Santander '
+                  'i podobne). Plik jest czytany tylko na telefonie.',
+            style: const TextStyle(color: AppColors.muted, height: 1.4),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _busy ? null : _pick,
             icon: const Icon(Icons.upload_file),
-            label: Text(_fileName == null ? 'Wybierz plik CSV' : 'Wybierz inny plik'),
+            label: Text(_fileName == null ? str.selectCsvFile : (str.isEnglish ? 'Choose another file' : 'Wybierz inny plik')),
           ),
           if (_busy) const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
           if (_fileName != null) ...[
@@ -154,26 +166,26 @@ class _ImportState extends ConsumerState<ImportScreen> {
                 const SizedBox(height: 6),
                 Text(
                   _autoDetected
-                      ? '✓ Rozpoznano układ pliku automatycznie.'
-                      : '⚠ Nie rozpoznałem układu. Wskaż kolumny poniżej.',
+                      ? (str.isEnglish ? '✓ File layout detected automatically.' : '✓ Rozpoznano układ pliku automatycznie.')
+                      : (str.isEnglish ? '⚠ Could not detect layout. Select columns below.' : '⚠ Nie rozpoznałem układu. Wskaż kolumny poniżej.'),
                   style: TextStyle(
                       color: _autoDetected ? AppColors.green : AppColors.amberInk, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 14),
-                _dropdown('Data', _dateCol, (v) {
+                _dropdown(str.date, _dateCol, (v) {
                   _dateCol = v;
                   _replan();
-                }),
+                }, hint: str.isEnglish ? 'select' : 'wybierz'),
                 const SizedBox(height: 10),
-                _dropdown('Kwota', _amountCol, (v) {
+                _dropdown(str.isEnglish ? 'Amount' : 'Kwota', _amountCol, (v) {
                   _amountCol = v;
                   _replan();
-                }),
+                }, hint: str.isEnglish ? 'select' : 'wybierz'),
                 const SizedBox(height: 10),
-                _dropdown('Opis', _descCols.length == 1 ? _descCols.first : null, (v) {
+                _dropdown(str.isEnglish ? 'Description' : 'Opis', _descCols.length == 1 ? _descCols.first : null, (v) {
                   _descCols = v == null ? [] : [v];
                   _replan();
-                }, hint: _descCols.length > 1 ? 'kilka kolumn (auto)' : 'wybierz'),
+                }, hint: _descCols.length > 1 ? (str.isEnglish ? 'multiple columns (auto)' : 'kilka kolumn (auto)') : (str.isEnglish ? 'select' : 'wybierz')),
               ]),
             ),
           ],
@@ -186,16 +198,18 @@ class _ImportState extends ConsumerState<ImportScreen> {
             const SizedBox(height: 16),
             SectionCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Podsumowanie', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Text(str.isEnglish ? 'Summary' : 'Podsumowanie', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 10),
-                _stat('Nowe wydatki', '${plan.newReceipts.length}', formatMoney(plan.newTotalCents)),
-                _stat('Dopasowane do paragonów', '${plan.matched}', 'bez dublowania'),
-                _stat('Już zaimportowane', '${plan.duplicates}', 'pominięte'),
-                _stat('Wpływy', '${plan.incomes}', 'pominięte'),
+                _stat(str.isEnglish ? 'New expenses' : 'Nowe wydatki', '${plan.newReceipts.length}', formatMoney(plan.newTotalCents)),
+                _stat(str.isEnglish ? 'Matched to receipts' : 'Dopasowane do paragonów', '${plan.matched}', str.isEnglish ? 'no duplicates' : 'bez dublowania'),
+                _stat(str.isEnglish ? 'Already imported' : 'Już zaimportowane', '${plan.duplicates}', str.isEnglish ? 'skipped' : 'pominięte'),
+                _stat(str.isEnglish ? 'Income' : 'Wpływy', '${plan.incomes}', str.isEnglish ? 'skipped' : 'pominięte'),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Dodaj wydatki bez paragonu', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Każda niedopasowana płatność zostanie zapisana jako wydatek z kategorią.'),
+                  title: Text(str.isEnglish ? 'Add expenses without receipt' : 'Dodaj wydatki bez paragonu', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(str.isEnglish
+                      ? 'Each unmatched payment will be saved as an expense with category.'
+                      : 'Każda niedopasowana płatność zostanie zapisana jako wydatek z kategorią.'),
                   value: _addUnmatched,
                   activeThumbColor: Colors.white,
                   activeTrackColor: AppColors.green,
@@ -210,25 +224,26 @@ class _ImportState extends ConsumerState<ImportScreen> {
             SectionCard(
               padding: EdgeInsets.zero,
               child: Column(children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Align(alignment: Alignment.centerLeft, child: Eyebrow('PODGLĄD')),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Align(alignment: Alignment.centerLeft, child: Eyebrow(str.isEnglish ? 'PREVIEW' : 'PODGLĄD')),
                 ),
-                for (final t in plan.txns.take(8)) _previewRow(t),
+                for (final t in plan.txns.take(8)) _previewRow(t, str),
                 if (plan.txns.length > 8)
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text('+ ${plan.txns.length - 8} kolejnych', style: const TextStyle(color: AppColors.muted)),
+                    child: Text(str.isEnglish ? '+ ${plan.txns.length - 8} more' : '+ ${plan.txns.length - 8} kolejnych', style: const TextStyle(color: AppColors.muted)),
                   ),
                 if (plan.txns.isEmpty)
-                  const Padding(
-                      padding: EdgeInsets.all(20), child: Text('Nic nowego do zaimportowania.', style: TextStyle(color: AppColors.muted))),
+                  Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(str.isEnglish ? 'Nothing new to import.' : 'Nic nowego do zaimportowania.', style: const TextStyle(color: AppColors.muted))),
               ]),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: (_busy || plan.txns.isEmpty) ? null : _import,
-              child: Text('Importuj ${plan.txns.length} transakcji'),
+              child: Text(str.isEnglish ? 'Import ${plan.txns.length} transactions' : 'Importuj ${plan.txns.length} transakcji'),
             ),
           ],
         ],
@@ -258,9 +273,14 @@ class _ImportState extends ConsumerState<ImportScreen> {
         ]),
       );
 
-  Widget _previewRow(ImportedTxn t) {
+  Widget _previewRow(ImportedTxn t, AppStrings str) {
     final matched = t.matchedReceiptId != null;
     final created = t.newReceipt != null;
+    final badgeLabel = matched
+        ? (str.isEnglish ? 'Matched' : 'Dopasowany')
+        : created
+            ? (str.isEnglish ? 'New' : 'Nowy')
+            : (str.isEnglish ? 'Saved' : 'Zapisany');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
@@ -270,12 +290,12 @@ class _ImportState extends ConsumerState<ImportScreen> {
             Text(created ? t.newReceipt!.store : cleanMerchant(t.row.description),
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
             Text(
-                '${shortDate(t.row.date)}${created ? ' · ${t.newReceipt!.mainCategory}' : ''}',
+                '${shortDate(t.row.date, isEnglish: str.isEnglish)}${created ? ' · ${str.categoryName(t.newReceipt!.mainCategory)}' : ''}',
                 style: const TextStyle(color: AppColors.muted)),
           ]),
         ),
         const SizedBox(width: 8),
-        Pill(matched ? 'Dopasowany' : created ? 'Nowy' : 'Zapisany',
+        Pill(badgeLabel,
             bg: matched ? AppColors.blueSoft : created ? AppColors.greenSoft : AppColors.chip,
             fg: matched ? AppColors.blue : created ? AppColors.green : AppColors.muted),
         const SizedBox(width: 10),
