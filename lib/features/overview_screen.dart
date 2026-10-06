@@ -29,11 +29,37 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     try {
       final chat = await ref.read(aiSettingsProvider.notifier).chat();
       final a = await chat.ask(q);
-      if (mounted) setState(() => _answer = a);
+      if (mounted) {
+        setState(() => _answer = a);
+        if (a.createdReceipt != null) {
+          _q.clear();
+          ref.read(dataVersionProvider.notifier).bump();
+        }
+      }
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {
       if (mounted) setState(() => _asking = false);
+    }
+  }
+
+  Future<void> _undoReceipt(Receipt r) async {
+    final id = r.id;
+    if (id == null) return;
+    try {
+      await ref.read(dbProvider).deleteReceipt(id);
+      ref.read(dataVersionProvider.notifier).bump();
+      setState(() => _answer = null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cofnięto dodanie wydatku: ${r.store}'),
+            backgroundColor: AppColors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
     }
   }
 
@@ -55,8 +81,8 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
           onSubmitted: (_) => _ask(),
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: 'Ile wydałem na kawę w zeszłym kwartale?',
-            prefixIcon: const Icon(Icons.search),
+            hintText: 'Zapytaj lub wpisz: np. Kawa 12 zł w Żabce',
+            prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
             suffixIcon: _asking
                 ? const Padding(
                     padding: EdgeInsets.all(14),
@@ -70,46 +96,107 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         ),
         if (_answer != null) ...[
           const SizedBox(height: 12),
-          SectionCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_answer!.text, style: const TextStyle(fontSize: 16, height: 1.4)),
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                if (_answer!.sourceCount > 0) Pill('Źródło: ${_answer!.sourceCount} ${plPlural(_answer!.sourceCount, 'pozycja', 'pozycje', 'pozycji')}'),
-                _answer!.engine == 'lokalnie'
-                    ? const Pill('Obliczone na telefonie', bg: AppColors.greenSoft, fg: AppColors.green)
-                    : Pill('Model: ${_answer!.engine}', bg: AppColors.blueSoft, fg: AppColors.blue),
-              ]),
-              if (_answer!.hits.length > 1)
-                Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: EdgeInsets.zero,
-                    title: const Text('Pokaż pozycje', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
-                    children: [
-                      for (final h in _answer!.hits.take(15))
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: Row(children: [
-                            SizedBox(width: 54, child: Text(shortDate(h.doc.date), style: const TextStyle(color: AppColors.muted))),
-                            Expanded(
-                              child: Text(h.doc.name == h.doc.store ? h.doc.name : '${h.doc.name} · ${h.doc.store}',
-                                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
-                            Text(formatMoney(h.doc.cents, withCurrency: false), style: mono(size: 14, weight: FontWeight.w500)),
-                          ]),
-                        ),
-                      if (_answer!.hits.length > 15)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text('… i ${_answer!.hits.length - 15} więcej', style: const TextStyle(color: AppColors.muted)),
-                        ),
-                    ],
+          if (_answer!.createdReceipt != null)
+            SectionCard(
+              border: AppColors.green,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Dodano nowy wydatek z czatu',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
                   ),
+                  Text(
+                    formatMoney(_answer!.createdReceipt!.totalCents),
+                    style: mono(size: 18, weight: FontWeight.w800, color: AppColors.green),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                Text(
+                  '${_answer!.createdReceipt!.store} · ${shortDate(_answer!.createdReceipt!.date)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
-            ]),
-          ),
+                const SizedBox(height: 8),
+                for (final item in _answer!.createdReceipt!.items)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(children: [
+                      Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                      Pill(item.category, bg: AppColors.chip, fg: AppColors.ink),
+                      const SizedBox(width: 8),
+                      Text(formatMoney(item.cents, withCurrency: false), style: mono(size: 14)),
+                    ]),
+                  ),
+                const SizedBox(height: 12),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  TextButton.icon(
+                    style: TextButton.styleFrom(foregroundColor: AppColors.muted),
+                    icon: const Icon(Icons.undo_rounded, size: 18),
+                    label: const Text('Cofnij dodanie'),
+                    onPressed: () => _undoReceipt(_answer!.createdReceipt!),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.green),
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    label: const Text('Edytuj'),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ReviewScreen(initial: _answer!.createdReceipt!)),
+                      );
+                      if (mounted) setState(() => _answer = null);
+                    },
+                  ),
+                ]),
+              ]),
+            )
+          else
+            SectionCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_answer!.text, style: const TextStyle(fontSize: 16, height: 1.4)),
+                const SizedBox(height: 12),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  if (_answer!.sourceCount > 0)
+                    Pill('Źródło: ${_answer!.sourceCount} ${plPlural(_answer!.sourceCount, 'pozycja', 'pozycje', 'pozycji')}'),
+                  _answer!.engine == 'lokalnie'
+                      ? const Pill('Obliczone na telefonie', bg: AppColors.greenSoft, fg: AppColors.green)
+                      : Pill('Model: ${_answer!.engine}', bg: AppColors.blueSoft, fg: AppColors.blue),
+                ]),
+                if (_answer!.hits.length > 1)
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: EdgeInsets.zero,
+                      title:
+                          const Text('Pokaż pozycje', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
+                      children: [
+                        for (final h in _answer!.hits.take(15))
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: Row(children: [
+                              SizedBox(
+                                  width: 54, child: Text(shortDate(h.doc.date), style: const TextStyle(color: AppColors.muted))),
+                              Expanded(
+                                child: Text(h.doc.name == h.doc.store ? h.doc.name : '${h.doc.name} · ${h.doc.store}',
+                                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                              Text(formatMoney(h.doc.cents, withCurrency: false), style: mono(size: 14, weight: FontWeight.w500)),
+                            ]),
+                          ),
+                        if (_answer!.hits.length > 15)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text('… i ${_answer!.hits.length - 15} więcej',
+                                style: const TextStyle(color: AppColors.muted)),
+                          ),
+                      ],
+                    ),
+                  ),
+              ]),
+            ),
         ],
         const SizedBox(height: 20),
         summary.maybeWhen(data: (s) => _budgets(context, s), orElse: () => const SizedBox()),

@@ -3,15 +3,25 @@ import 'dart:convert';
 
 import '../core/money.dart';
 import '../data/db.dart';
+import '../domain/models.dart';
 import '../domain/retrieval.dart';
 import 'ai_settings.dart';
 import 'embeddings.dart';
 import 'llm_api.dart';
 import 'local_runtime.dart';
 import 'masking.dart';
+import 'natural_expense_parser.dart';
 
 class ChatAnswer {
-  ChatAnswer(this.text, {required this.sourceCount, required this.engine, this.hits = const [], this.rangeLabel});
+  ChatAnswer(
+    this.text, {
+    required this.sourceCount,
+    required this.engine,
+    this.hits = const [],
+    this.rangeLabel,
+    this.createdReceipt,
+  });
+
   final String text;
   final int sourceCount;
 
@@ -20,15 +30,10 @@ class ChatAnswer {
   final String engine;
   final List<Hit> hits;
   final String? rangeLabel;
+  final Receipt? createdReceipt;
 }
 
-/// Answers questions about spending. The pipeline is deliberately split so
-/// numbers never come from a language model:
-///  1. parse the question (period, intent, content words);
-///  2. rank receipt lines against it (stems, typos, synonyms);
-///  3. compute the answer from the matched rows.
-/// A model is only used (a) to suggest extra search words when nothing matched
-/// and (b) as a last resort for questions the parser can't turn into a lookup.
+/// Answers questions about spending or automatically adds expenses described in chat.
 class SpendingChat {
   SpendingChat({
     required this.db,
@@ -52,6 +57,36 @@ class SpendingChat {
 
   Future<ChatAnswer> ask(String question) async {
     final today = now ?? DateTime.now();
+
+    // 1. If user is adding an expense (e.g. "Kupiłem w Żabce kawę za 8 zł")
+    if (isExpenseInput(question)) {
+      final receipt = await parseNaturalExpense(
+        question,
+        today,
+        llm: _apiChat ? llm : null,
+      );
+      if (receipt.items.isNotEmpty && receipt.totalCents > 0) {
+        final id = await db.saveReceipt(receipt);
+        final saved = receipt.copy(id: id);
+
+        final itemLines = saved.items
+            .map((i) => '• ${i.name} – ${formatMoney(i.cents, withCurrency: true)} [${i.category}]')
+            .join('\n');
+
+        final text = 'Dodałem wydatek do bazy:\n'
+            '${saved.store} – ${formatMoney(saved.totalCents)}\n\n'
+            '$itemLines';
+
+        return ChatAnswer(
+          text,
+          sourceCount: saved.items.length,
+          engine: _apiChat ? '${settings.api.providerLabel} (czat)' : 'lokalnie (czat)',
+          createdReceipt: saved,
+        );
+      }
+    }
+
+    // 2. Otherwise answer spending questions via retrieval pipeline
     final plan = parseQuery(question, today);
     final docs = await db.itemDocs(from: plan.range?.from, to: plan.range?.to);
 

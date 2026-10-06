@@ -48,8 +48,8 @@ class Receipt {
   String? imagePath;
 
   /// Deep copy, so a screen can edit without touching cached lists.
-  Receipt copy() => Receipt(
-        id: id,
+  Receipt copy({int? id}) => Receipt(
+        id: id ?? this.id,
         store: store,
         date: date,
         totalCents: totalCents,
