@@ -21,7 +21,7 @@ class AppDb {
       databaseFactory = databaseFactoryFfi;
     }
     final file = path ?? p.join((await getApplicationSupportDirectory()).path, 'rachunkownik.db');
-    final db = await openDatabase(file, version: 3, onCreate: _create, onUpgrade: _upgrade);
+    final db = await openDatabase(file, version: 4, onCreate: _create, onUpgrade: _upgrade);
     return AppDb(db);
   }
 
@@ -46,11 +46,21 @@ class AppDb {
     await db.execute('CREATE INDEX idx_items_receipt ON items(receipt_id)');
     await _createBankTable(db);
     await _createVectorTable(db);
+    await _createIncomeTable(db);
   }
 
   static Future<void> _upgrade(Database db, int from, int to) async {
     if (from < 2) await _createBankTable(db);
     if (from < 3) await _createVectorTable(db);
+    if (from < 4) await _createIncomeTable(db);
+  }
+
+  static Future<void> _createIncomeTable(Database db) async {
+    await db.execute('''CREATE TABLE incomes(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL, cents INTEGER NOT NULL, category TEXT NOT NULL,
+      date INTEGER NOT NULL, note TEXT)''');
+    await db.execute('CREATE INDEX idx_incomes_date ON incomes(date)');
   }
 
   static Future<void> _createVectorTable(Database db) => db.execute('''CREATE TABLE item_vectors(
@@ -404,6 +414,85 @@ class AppDb {
   Future<void> dismissSub(String name) => _db.insert('dismissed_subs', {'name': name},
       conflictAlgorithm: ConflictAlgorithm.ignore);
 
+  // ---- incomes ----
+
+  Future<int> saveIncome(Income inc) async {
+    return _db.insert('incomes', {
+      'title': inc.title,
+      'cents': inc.cents,
+      'category': inc.category,
+      'date': inc.date.millisecondsSinceEpoch,
+      'note': inc.note,
+    });
+  }
+
+  Future<void> updateIncome(Income inc) async {
+    final id = inc.id;
+    if (id == null) throw ArgumentError('Income has no id');
+    await _db.update(
+      'incomes',
+      {
+        'title': inc.title,
+        'cents': inc.cents,
+        'category': inc.category,
+        'date': inc.date.millisecondsSinceEpoch,
+        'note': inc.note,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteIncome(int id) async {
+    await _db.delete('incomes', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<Income>> incomes({DateTime? from, DateTime? to, int? limit}) async {
+    final where = <String>[];
+    final args = <Object>[];
+    if (from != null) {
+      where.add('date >= ?');
+      args.add(from.millisecondsSinceEpoch);
+    }
+    if (to != null) {
+      where.add('date < ?');
+      args.add(to.millisecondsSinceEpoch);
+    }
+    final rows = await _db.query(
+      'incomes',
+      where: where.isEmpty ? null : where.join(' AND '),
+      whereArgs: args,
+      orderBy: 'date DESC, id DESC',
+      limit: limit,
+    );
+    return rows
+        .map((r) => Income(
+              id: r['id'] as int,
+              title: r['title'] as String,
+              cents: r['cents'] as int,
+              category: r['category'] as String,
+              date: DateTime.fromMillisecondsSinceEpoch(r['date'] as int),
+              note: r['note'] as String?,
+            ))
+        .toList();
+  }
+
+  Future<int> totalIncome(DateTime from, DateTime to) async {
+    final rows = await _db.rawQuery(
+      'SELECT SUM(cents) AS s FROM incomes WHERE date >= ? AND date < ?',
+      [from.millisecondsSinceEpoch, to.millisecondsSinceEpoch],
+    );
+    return (rows.first['s'] as int?) ?? 0;
+  }
+
+  Future<Map<String, int>> incomeByCategory(DateTime from, DateTime to) async {
+    final rows = await _db.rawQuery('''
+      SELECT category AS c, SUM(cents) AS s FROM incomes
+      WHERE date >= ? AND date < ? GROUP BY category''',
+        [from.millisecondsSinceEpoch, to.millisecondsSinceEpoch]);
+    return {for (final r in rows) r['c'] as String: (r['s'] as int?) ?? 0};
+  }
+
   // ---- backup & restore ----
 
   Future<Map<String, dynamic>> exportBackup() async {
@@ -413,6 +502,7 @@ class AppDb {
     final subscriptionsRows = await _db.query('subscriptions', orderBy: 'id ASC');
     final dismissedRows = await _db.query('dismissed_subs');
     final bankRows = await _db.query('bank_transactions', orderBy: 'date ASC');
+    final incomeRows = await _db.query('incomes', orderBy: 'id ASC');
 
     final itemsByReceipt = <int, List<Map<String, dynamic>>>{};
     for (final i in itemsRows) {
@@ -445,6 +535,16 @@ class AppDb {
       'version': 1,
       'exported_at': DateTime.now().toIso8601String(),
       'receipts': receiptsList,
+      'incomes': [
+        for (final inc in incomeRows)
+          {
+            'title': inc['title'],
+            'cents': inc['cents'],
+            'category': inc['category'],
+            'date': inc['date'],
+            'note': inc['note'],
+          }
+      ],
       'budgets': [
         for (final b in budgetsRows)
           {'category': b['category'], 'limit_cents': b['limit_cents']}
@@ -500,6 +600,7 @@ class AppDb {
     final rawSubs = (data['subscriptions'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final rawDismissed = (data['dismissed_subs'] as List?)?.cast<String>() ?? [];
     final rawBank = (data['bank_transactions'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final rawIncomes = (data['incomes'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     var itemsTotal = 0;
 
@@ -508,6 +609,7 @@ class AppDb {
       await tx.delete('bank_transactions');
       await tx.delete('items');
       await tx.delete('receipts');
+      await tx.delete('incomes');
       await tx.delete('budgets');
       await tx.delete('subscriptions');
       await tx.delete('dismissed_subs');
@@ -539,6 +641,16 @@ class AppDb {
           });
           itemsTotal++;
         }
+      }
+
+      for (final inc in rawIncomes) {
+        await tx.insert('incomes', {
+          'title': inc['title'] as String? ?? 'Dochód',
+          'cents': (inc['cents'] as num).toInt(),
+          'category': (inc['category'] as String?) ?? 'Wynagrodzenie',
+          'date': (inc['date'] as num).toInt(),
+          'note': inc['note'] as String?,
+        });
       }
 
       for (final b in rawBudgets) {
@@ -581,6 +693,7 @@ class AppDb {
       return BackupStats(
         receiptsCount: rawReceipts.length,
         itemsCount: itemsTotal,
+        incomesCount: rawIncomes.length,
         budgetsCount: rawBudgets.length,
         subscriptionsCount: rawSubs.length,
         bankTransactionsCount: rawBank.length,
@@ -596,6 +709,7 @@ class BackupStats {
     required this.budgetsCount,
     required this.subscriptionsCount,
     required this.bankTransactionsCount,
+    this.incomesCount = 0,
   });
 
   final int receiptsCount;
@@ -603,14 +717,17 @@ class BackupStats {
   final int budgetsCount;
   final int subscriptionsCount;
   final int bankTransactionsCount;
+  final int incomesCount;
 
   String get summary {
     final parts = <String>[];
     if (receiptsCount > 0) parts.add('$receiptsCount paragonów ($itemsCount pozycji)');
+    if (incomesCount > 0) parts.add('$incomesCount dochodów');
     if (budgetsCount > 0) parts.add('$budgetsCount budżetów');
     if (subscriptionsCount > 0) parts.add('$subscriptionsCount subskrypcji');
     if (bankTransactionsCount > 0) parts.add('$bankTransactionsCount transakcji bankowych');
     return parts.isEmpty ? 'Pusta baza danych' : parts.join(', ');
   }
 }
+
 

@@ -115,3 +115,49 @@ class Subscription {
     return d;
   }
 }
+
+const defaultIncomeCategories = [
+  'Wynagrodzenie',
+  'Zlecenie',
+  'Premia',
+  'Zwrot',
+  'Inwestycje',
+  'Prezent',
+  'Inne',
+];
+
+class Income {
+  Income({
+    this.id,
+    required this.title,
+    required this.cents,
+    required this.date,
+    this.category = 'Wynagrodzenie',
+    this.note,
+  });
+
+  final int? id;
+  String title;
+  int cents;
+  DateTime date;
+  String category;
+  String? note;
+
+  Income copy({
+    int? id,
+    String? title,
+    int? cents,
+    DateTime? date,
+    String? category,
+    String? note,
+  }) =>
+      Income(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        cents: cents ?? this.cents,
+        date: date ?? this.date,
+        category: category ?? this.category,
+        note: note ?? this.note,
+      );
+}
+

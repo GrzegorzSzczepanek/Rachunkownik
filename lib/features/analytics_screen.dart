@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../providers.dart';
+import 'income_dialog.dart';
 import 'widgets.dart';
 
 /// One colour per category, readable next to each other and on white.
@@ -92,10 +93,57 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
         )
       else
         const Text('Brak danych z poprzedniego miesiąca', style: TextStyle(color: AppColors.muted)),
+      const SizedBox(height: 14),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Dochody', style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text('+${formatMoney(d.income)}',
+                      style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
+                ],
+              ),
+            ),
+            Container(width: 1, height: 32, color: AppColors.border),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Bilans', style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${d.balance >= 0 ? '+' : ''}${formatMoney(d.balance)}',
+                    style: mono(
+                      size: 15,
+                      weight: FontWeight.w700,
+                      color: d.balance >= 0 ? AppColors.green : AppColors.amberInk,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
       const SizedBox(height: 20),
       _card('Ostatnie 6 miesięcy', _monthlyBars(d)),
       const SizedBox(height: 16),
       _card('Kategorie', _categories(d)),
+      if (d.incomeByCategory.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        _card('Dochody wg kategorii', _incomeCategories(d)),
+      ],
       const SizedBox(height: 16),
       _card('Dzień po dniu', _daily(d)),
       if (d.topStores.isNotEmpty) ...[
@@ -112,6 +160,30 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
           child,
         ]),
       );
+
+  Widget _incomeCategories(AnalyticsData d) {
+    final sorted = d.incomeByCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return Column(children: [
+      for (final e in sorted) ...[
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(children: [
+                Icon(incomeIconFor(e.key), size: 18, color: AppColors.green),
+                const SizedBox(width: 8),
+                Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ]),
+              Text('+${formatMoney(e.value)}',
+                  style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
+            ],
+          ),
+        ),
+        if (e != sorted.last) const Divider(height: 1),
+      ],
+    ]);
+  }
 
   Widget _monthlyBars(AnalyticsData d) {
     final maxY = d.monthly.map((e) => e.value).fold(0, (a, b) => a > b ? a : b).toDouble();

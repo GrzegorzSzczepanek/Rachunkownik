@@ -103,6 +103,13 @@ class AppStrings {
     required this.category,
     required this.save,
     required this.cancel,
+    required this.addIncome,
+    required this.income,
+    required this.incomes,
+    required this.balance,
+    required this.incomeAdded,
+    required this.incomeCategory,
+    required this.noIncomes,
   });
 
   const AppStrings.pl()
@@ -113,6 +120,13 @@ class AppStrings {
         tabSubscriptions = 'Subskrypcje',
         tabSettings = 'Ustawienia',
         addReceipt = 'Dodaj paragon',
+        addIncome = 'Dodaj dochód',
+        income = 'Dochód',
+        incomes = 'Dochody',
+        balance = 'Bilans',
+        incomeAdded = 'Dodano dochód',
+        incomeCategory = 'Kategoria dochodu',
+        noIncomes = 'Brak zapisanych dochodów.',
         spent = 'WYDANE',
         budget = 'Budżet',
         chatPlaceholder = 'Zapytaj lub wpisz: np. Kawa 12 zł w Żabce',
@@ -166,6 +180,13 @@ class AppStrings {
         tabSubscriptions = 'Subscriptions',
         tabSettings = 'Settings',
         addReceipt = 'Add receipt',
+        addIncome = 'Add income',
+        income = 'Income',
+        incomes = 'Income',
+        balance = 'Balance',
+        incomeAdded = 'Income recorded',
+        incomeCategory = 'Income category',
+        noIncomes = 'No income recorded yet.',
         spent = 'SPENT',
         budget = 'Budget',
         chatPlaceholder = 'Ask or type: e.g. Coffee \$4 at Starbucks',
@@ -218,6 +239,13 @@ class AppStrings {
   final String tabSubscriptions;
   final String tabSettings;
   final String addReceipt;
+  final String addIncome;
+  final String income;
+  final String incomes;
+  final String balance;
+  final String incomeAdded;
+  final String incomeCategory;
+  final String noIncomes;
   final String spent;
   final String budget;
   final String chatPlaceholder;

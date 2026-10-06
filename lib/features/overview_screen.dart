@@ -9,6 +9,7 @@ import '../core/money.dart';
 import '../core/theme.dart';
 import '../domain/models.dart';
 import '../providers.dart';
+import 'income_dialog.dart';
 import 'scan_flow.dart' show ReviewScreen;
 import 'widgets.dart';
 
@@ -32,7 +33,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
       final a = await chat.ask(q);
       if (mounted) {
         setState(() => _answer = a);
-        if (a.createdReceipt != null) {
+        if (a.createdReceipt != null || a.createdIncome != null) {
           _q.clear();
           ref.read(dataVersionProvider.notifier).bump();
         }
@@ -65,6 +66,26 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     }
   }
 
+  Future<void> _undoIncome(Income inc) async {
+    final id = inc.id;
+    if (id == null) return;
+    try {
+      await ref.read(dbProvider).deleteIncome(id);
+      ref.read(dataVersionProvider.notifier).bump();
+      setState(() => _answer = null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cofnięto dodanie dochodu: ${inc.title}'),
+            backgroundColor: AppColors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final str = ref.watch(appStringsProvider);
@@ -74,7 +95,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         summary.when(
-          data: (s) => _header(s, str),
+          data: (s) => _header(context, s, str),
           loading: () => const SizedBox(height: 120),
           error: (e, _) => Text('$e'),
         ),
@@ -149,6 +170,56 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => ReviewScreen(initial: _answer!.createdReceipt!)),
                       );
+                      if (mounted) setState(() => _answer = null);
+                    },
+                  ),
+                ]),
+              ]),
+            )
+          else if (_answer!.createdIncome != null)
+            SectionCard(
+              border: AppColors.green,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Dodano dochód z czatu',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
+                  ),
+                  Text(
+                    '+${formatMoney(_answer!.createdIncome!.cents)}',
+                    style: mono(size: 18, weight: FontWeight.w800, color: AppColors.green),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                Text(
+                  '${_answer!.createdIncome!.title} · ${shortDate(_answer!.createdIncome!.date)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Pill(_answer!.createdIncome!.category, bg: AppColors.greenSoft, fg: AppColors.green),
+                  if (_answer!.createdIncome!.note != null) ...[
+                    const SizedBox(width: 8),
+                    Text(_answer!.createdIncome!.note!, style: const TextStyle(color: AppColors.muted)),
+                  ],
+                ]),
+                const SizedBox(height: 12),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  TextButton.icon(
+                    style: TextButton.styleFrom(foregroundColor: AppColors.muted),
+                    icon: const Icon(Icons.undo_rounded, size: 18),
+                    label: Text(str.undo),
+                    onPressed: () => _undoIncome(_answer!.createdIncome!),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.green),
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    label: Text(str.edit),
+                    onPressed: () async {
+                      await showIncomeDialog(context, initial: _answer!.createdIncome!);
                       if (mounted) setState(() => _answer = null);
                     },
                   ),
@@ -242,14 +313,73 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     );
   }
 
-  Widget _header(MonthSummary s, AppStrings str) {
+  Widget _header(BuildContext context, MonthSummary s, AppStrings str) {
     final frac = s.budgetTotal == 0 ? 0.0 : s.spent / s.budgetTotal;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Eyebrow('${monthLabel(s.month)} · ${str.spent}'),
-      const SizedBox(height: 6),
-      Text(formatMoney(s.spent), style: mono(size: 44)),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Eyebrow('${monthLabel(s.month)} · ${str.spent}'),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.green,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            ),
+            onPressed: () => showIncomeDialog(context),
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+            label: Text(str.addIncome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Text(formatMoney(s.spent), style: mono(size: 40)),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(str.incomes,
+                      style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text('+${formatMoney(s.income)}',
+                      style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
+                ],
+              ),
+            ),
+            Container(width: 1, height: 32, color: AppColors.border),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(str.balance,
+                      style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${s.balance >= 0 ? '+' : ''}${formatMoney(s.balance)}',
+                    style: mono(
+                      size: 15,
+                      weight: FontWeight.w700,
+                      color: s.balance >= 0 ? AppColors.green : AppColors.amberInk,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
       if (s.budgetTotal > 0) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ProgressBar(frac, color: frac > 1 ? AppColors.amber : AppColors.green),
         const SizedBox(height: 6),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [

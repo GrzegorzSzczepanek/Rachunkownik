@@ -143,12 +143,15 @@ DateTime monthStart(DateTime d) => DateTime(d.year, d.month);
 DateTime nextMonthStart(DateTime d) => DateTime(d.year, d.month + 1);
 
 class MonthSummary {
-  MonthSummary(this.month, this.spent, this.byCategory, this.budgets);
+  MonthSummary(this.month, this.spent, this.income, this.byCategory, this.incomeByCategory, this.budgets);
   final DateTime month;
   final int spent;
+  final int income;
   final Map<String, int> byCategory;
+  final Map<String, int> incomeByCategory;
   final List<Budget> budgets;
 
+  int get balance => income - spent;
   int get budgetTotal => budgets.fold(0, (a, b) => a + b.limitCents);
   int get remaining => budgetTotal - spent;
   int get withoutBudget => byCategory.entries
@@ -162,12 +165,23 @@ final monthSummaryProvider = FutureProvider<MonthSummary>((ref) async {
   final m = monthStart(DateTime.now());
   final to = nextMonthStart(m);
   return MonthSummary(
-      m, await db.totalSpend(m, to), await db.spendByCategory(m, to), await db.budgets());
+    m,
+    await db.totalSpend(m, to),
+    await db.totalIncome(m, to),
+    await db.spendByCategory(m, to),
+    await db.incomeByCategory(m, to),
+    await db.budgets(),
+  );
 });
 
 final receiptsProvider = FutureProvider<List<Receipt>>((ref) async {
   ref.watch(dataVersionProvider);
   return ref.read(dbProvider).receipts();
+});
+
+final incomesProvider = FutureProvider<List<Income>>((ref) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(dbProvider).incomes();
 });
 
 final subscriptionsProvider = FutureProvider<List<Subscription>>((ref) async {
@@ -194,6 +208,8 @@ class AnalyticsData {
     required this.total,
     required this.previousTotal,
     required this.byCategory,
+    required this.income,
+    required this.incomeByCategory,
     required this.monthly,
     required this.daily,
     required this.topStores,
@@ -203,11 +219,14 @@ class AnalyticsData {
   final int total;
   final int previousTotal;
   final Map<String, int> byCategory;
+  final int income;
+  final Map<String, int> incomeByCategory;
   final List<MapEntry<DateTime, int>> monthly; // last 6 months ending at [month]
   final Map<int, int> daily; // day of month -> cents
   final List<MapEntry<String, int>> topStores;
 
   int get daysInMonth => DateTime(month.year, month.month + 1, 0).day;
+  int get balance => income - total;
 }
 
 final analyticsProvider = FutureProvider.family<AnalyticsData, DateTime>((ref, month) async {
@@ -221,6 +240,8 @@ final analyticsProvider = FutureProvider.family<AnalyticsData, DateTime>((ref, m
     total: await db.totalSpend(from, to),
     previousTotal: await db.totalSpend(prev, from),
     byCategory: await db.spendByCategory(from, to),
+    income: await db.totalIncome(from, to),
+    incomeByCategory: await db.incomeByCategory(from, to),
     monthly: await db.monthlyTotals(from),
     daily: await db.dailyTotals(from, to),
     topStores: await db.topStores(from, to),

@@ -13,9 +13,10 @@ import '../core/theme.dart';
 import '../data/receipt_images.dart';
 import '../domain/models.dart';
 import '../providers.dart';
+import 'income_dialog.dart';
 import 'widgets.dart';
 
-/// Entry point for the centre button: photo, gallery or manual entry.
+/// Entry point for the centre button: photo, gallery, manual entry or income.
 Future<void> startScan(BuildContext context) async {
   final choice = await showModalBottomSheet<String>(
     context: context,
@@ -34,11 +35,20 @@ Future<void> startScan(BuildContext context) async {
             leading: const Icon(Icons.edit_outlined),
             title: const Text('Wpisz wydatek ręcznie'),
             onTap: () => Navigator.pop(ctx, 'manual')),
+        ListTile(
+            leading: const Icon(Icons.trending_up_rounded, color: AppColors.green),
+            title: const Text('Dodaj dochód', style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: const Text('Wypłata, premia, przelew, zlecenie'),
+            onTap: () => Navigator.pop(ctx, 'income')),
       ]),
     ),
   );
   if (choice == null || !context.mounted) return;
   final nav = Navigator.of(context);
+  if (choice == 'income') {
+    await showIncomeDialog(context);
+    return;
+  }
   if (choice == 'manual') {
     nav.push(MaterialPageRoute(
         builder: (_) => ReviewScreen(

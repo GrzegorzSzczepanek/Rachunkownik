@@ -128,6 +128,90 @@ bool isExpenseInput(String text) {
       (hasPrice && t.split(' ').length <= 6);
 }
 
+/// Helper to extract a price match from a text chunk.
+RegExpMatch? findPriceMatch(String chunk) {
+  // 1. Explicit currency: 15.50 zł, 150 pln, 12 zl (not followed by ASCII word char)
+  final withCurrency = RegExp(r'(\d+(?:\.\d+)?)\s*(?:zł|pln|zl)(?!\w)', caseSensitive: false).firstMatch(chunk);
+  if (withCurrency != null) return withCurrency;
+
+  // 2. Preceded by za/po: za 15.50, po 8
+  final withPreposition = RegExp(r'\b(?:za|po)\s+(\d+(?:\.\d+)?)(?!\w)', caseSensitive: false).firstMatch(chunk);
+  if (withPreposition != null) return withPreposition;
+
+  // 3. Number at the end of chunk: chleb 5, masło 7.50
+  final atEnd = RegExp(r'(\d+(?:\.\d+)?)\s*$', caseSensitive: false).firstMatch(chunk);
+  if (atEnd != null) return atEnd;
+
+  // 4. Any standalone number not followed by unit of measure
+  final anyNum = RegExp(r'\b(\d+(?:\.\d+)?)(?!\s*(?:l|ml|kg|g|%|cm|m|szt)\b)', caseSensitive: false).firstMatch(chunk);
+  return anyNum;
+}
+
+/// Determines whether user text is an intent to record an income.
+bool isIncomeInput(String text) {
+  final t = text.trim().toLowerCase();
+  if (t.isEmpty) return false;
+
+  final incomeKeywords = [
+    'dochód', 'dochod', 'przychód', 'przychod', 'wypłata', 'wyplata', 'wypłatę', 'wyplate',
+    'pensja', 'pensję', 'pensje', 'wynagrodzenie', 'premia', 'premię', 'premie', 'bonus',
+    'stypendium', 'zarobił', 'zarobiłam', 'zarobiłem', 'zarobek', 'wpływ', 'wplyw', 'wpłynęło',
+    'dostałem', 'dostałam', 'przelew od pracodawcy', 'sprzedaż na', 'sprzedałem na', 'sprzedałam na',
+  ];
+
+  final hasIncomeKeyword = incomeKeywords.any((k) => t.contains(k));
+  if (!hasIncomeKeyword) return false;
+
+  final queryStarters = ['ile', 'kiedy', 'gdzie', 'czy', 'jak', 'pokaż', 'znajdź', 'szukaj', 'podsumuj', 'wypisz'];
+  if (queryStarters.any((p) => t.startsWith(p))) return false;
+
+  final hasPrice = RegExp(r'\d+(?:[.,]\d+)?\s*(?:zł|pln|zl|\b)').hasMatch(t);
+  return hasPrice;
+}
+
+/// Parses a natural-language income description into an [Income].
+Income parseNaturalIncome(String text, DateTime date) {
+  var t = text.trim();
+  t = t.replaceAllMapped(RegExp(r'(\d+),(\d+)'), (m) => '${m[1]}.${m[2]}');
+
+  final match = findPriceMatch(t);
+  int cents = 0;
+  var title = t;
+
+  if (match != null) {
+    final val = double.tryParse(match.group(1)!);
+    if (val != null) {
+      cents = (val * 100).round();
+    }
+    title = t.substring(0, match.start) + t.substring(match.end);
+  }
+
+  // Strip common currency words and prefixes like "dodaj dochód:", "dostałem", "wpływ", etc.
+  title = title
+      .replaceAll(RegExp(r'\b(?:zł|pln|zl)\b', caseSensitive: false), ' ')
+      .replaceAll(RegExp(r'^(?:dodaj dochód|dodaj przychód|dochód|przychód|wpływ|zapisz dochód)[:\s\-–—]+', caseSensitive: false), '')
+      .replaceAll(RegExp(r'^(?:dostałem|dostałam|otrzymałem|otrzymałam)\s+', caseSensitive: false), '')
+      .replaceAll(RegExp(r'[\s\-–—:•*]+$'), '')
+      .replaceAll(RegExp(r'^[\s\-–—:•*]+'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
+  if (title.isEmpty) {
+    title = 'Dochód';
+  } else {
+    title = title[0].toUpperCase() + title.substring(1);
+  }
+
+  final category = guessIncomeCategory(title);
+
+  return Income(
+    title: title,
+    cents: cents,
+    date: date,
+    category: category,
+  );
+}
+
 /// Parses a natural-language description into a [Receipt].
 /// Uses deterministic offline parsing first (which handles lists and clear items instantly),
 /// falling back to LLM for unstructured narrative text when available.
@@ -262,25 +346,6 @@ Receipt parseExpenseOffline(String rawText, DateTime now) {
     ),
     ' ',
   );
-
-  // Helper to extract a price match from a text chunk
-  RegExpMatch? findPriceMatch(String chunk) {
-    // 1. Explicit currency: 15.50 zł, 150 pln, 12 zl (not followed by ASCII word char)
-    final withCurrency = RegExp(r'(\d+(?:\.\d+)?)\s*(?:zł|pln|zl)(?!\w)', caseSensitive: false).firstMatch(chunk);
-    if (withCurrency != null) return withCurrency;
-
-    // 2. Preceded by za/po: za 15.50, po 8
-    final withPreposition = RegExp(r'\b(?:za|po)\s+(\d+(?:\.\d+)?)(?!\w)', caseSensitive: false).firstMatch(chunk);
-    if (withPreposition != null) return withPreposition;
-
-    // 3. Number at the end of chunk: chleb 5, masło 7.50
-    final atEnd = RegExp(r'(\d+(?:\.\d+)?)\s*$', caseSensitive: false).firstMatch(chunk);
-    if (atEnd != null) return atEnd;
-
-    // 4. Any standalone number not followed by unit of measure
-    final anyNum = RegExp(r'\b(\d+(?:\.\d+)?)(?!\s*(?:l|ml|kg|g|%|cm|m|szt)\b)', caseSensitive: false).firstMatch(chunk);
-    return anyNum;
-  }
 
   // 3. Extract items and prices
   // Split on newlines, commas, semicolons, and conjunctions ("i", "oraz")

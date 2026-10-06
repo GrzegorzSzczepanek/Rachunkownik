@@ -20,6 +20,7 @@ class ChatAnswer {
     this.hits = const [],
     this.rangeLabel,
     this.createdReceipt,
+    this.createdIncome,
   });
 
   final String text;
@@ -31,6 +32,7 @@ class ChatAnswer {
   final List<Hit> hits;
   final String? rangeLabel;
   final Receipt? createdReceipt;
+  final Income? createdIncome;
 }
 
 /// Answers questions about spending or automatically adds expenses described in chat.
@@ -58,7 +60,26 @@ class SpendingChat {
   Future<ChatAnswer> ask(String question) async {
     final today = now ?? DateTime.now();
 
-    // 1. If user is adding an expense (e.g. "Kupiłem w Żabce kawę za 8 zł")
+    // 1. If user is adding an income (e.g. "Wypłata 5000 zł" or "Dodaj dochód 300 zł z Vinted")
+    if (isIncomeInput(question)) {
+      final income = parseNaturalIncome(question, today);
+      if (income.cents > 0) {
+        final id = await db.saveIncome(income);
+        final saved = income.copy(id: id);
+
+        final text = 'Dodałem dochód do bazy:\n'
+            '${saved.title} – +${formatMoney(saved.cents, withCurrency: true)} [${saved.category}]';
+
+        return ChatAnswer(
+          text,
+          sourceCount: 1,
+          engine: 'lokalnie (dochód)',
+          createdIncome: saved,
+        );
+      }
+    }
+
+    // 2. If user is adding an expense (e.g. "Kupiłem w Żabce kawę za 8 zł")
     if (isExpenseInput(question)) {
       final receipt = await parseNaturalExpense(
         question,
