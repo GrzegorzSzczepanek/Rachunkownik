@@ -1,0 +1,307 @@
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/money.dart';
+import '../core/theme.dart';
+import '../providers.dart';
+import 'widgets.dart';
+
+/// One colour per category, readable next to each other and on white.
+const _categoryColors = <String, Color>{
+  'Jedzenie': Color(0xFF1F5F4A),
+  'Dom': Color(0xFF2B4BC9),
+  'Transport': Color(0xFFC4780E),
+  'Rozrywka': Color(0xFF8A4FBF),
+  'Zdrowie': Color(0xFFB5483A),
+  'Ubrania': Color(0xFF3D8FA3),
+  'Inne': Color(0xFF8C8C86),
+};
+
+Color categoryColor(String c) => _categoryColors[c] ?? AppColors.muted;
+
+const _shortMonths = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+
+/// Compact axis label: 1250 zł -> "1,3k".
+String _axis(double cents) {
+  final zl = cents / 100;
+  if (zl >= 1000) return '${(zl / 1000).toStringAsFixed(1).replaceAll('.', ',')}k';
+  return zl.round().toString();
+}
+
+class AnalyticsScreen extends ConsumerStatefulWidget {
+  const AnalyticsScreen({super.key});
+  @override
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsState();
+}
+
+class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
+  DateTime _month = monthStart(DateTime.now());
+  String? _focus; // category highlighted in the donut
+
+  bool get _isCurrent => _month == monthStart(DateTime.now());
+
+  void _shift(int delta) => setState(() {
+        _month = DateTime(_month.year, _month.month + delta);
+        _focus = null;
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final data = ref.watch(analyticsProvider(_month));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Analiza')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            IconButton.filledTonal(onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left)),
+            Text(monthLabel(_month), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            IconButton.filledTonal(
+                onPressed: _isCurrent ? null : () => _shift(1), icon: const Icon(Icons.chevron_right)),
+          ]),
+          const SizedBox(height: 12),
+          data.when(
+            data: _body,
+            loading: () => const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
+            error: (e, _) => Text('$e'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(AnalyticsData d) {
+    if (d.total == 0 && d.monthly.every((m) => m.value == 0)) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Text('Brak wydatków do pokazania. Dodaj paragon albo zaimportuj dane z banku.',
+            style: TextStyle(color: AppColors.muted)),
+      );
+    }
+    final delta = d.previousTotal == 0 ? null : (d.total - d.previousTotal) / d.previousTotal;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Eyebrow('WYDANE'),
+      Text(formatMoney(d.total), style: mono(size: 36)),
+      const SizedBox(height: 4),
+      if (delta != null)
+        Text(
+          '${delta >= 0 ? '▲' : '▼'} ${(delta.abs() * 100).round()}% vs poprzedni miesiąc '
+          '(${formatMoney(d.previousTotal)})',
+          style: TextStyle(color: delta > 0 ? AppColors.amberInk : AppColors.green, fontWeight: FontWeight.w600),
+        )
+      else
+        const Text('Brak danych z poprzedniego miesiąca', style: TextStyle(color: AppColors.muted)),
+      const SizedBox(height: 20),
+      _card('Ostatnie 6 miesięcy', _monthlyBars(d)),
+      const SizedBox(height: 16),
+      _card('Kategorie', _categories(d)),
+      const SizedBox(height: 16),
+      _card('Dzień po dniu', _daily(d)),
+      if (d.topStores.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        _card('Najwięcej wydane w', _stores(d)),
+      ],
+    ]);
+  }
+
+  Widget _card(String title, Widget child) => SectionCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          child,
+        ]),
+      );
+
+  Widget _monthlyBars(AnalyticsData d) {
+    final maxY = d.monthly.map((e) => e.value).fold(0, (a, b) => a > b ? a : b).toDouble();
+    return SizedBox(
+      height: 200,
+      child: BarChart(BarChartData(
+        maxY: maxY == 0 ? 100 : maxY * 1.15,
+        alignment: BarChartAlignment.spaceAround,
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.border, strokeWidth: 1),
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(),
+          rightTitles: const AxisTitles(),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (v, meta) => v == meta.max
+                  ? const SizedBox()
+                  : Text(_axis(v), style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (v, _) {
+                final m = d.monthly[v.toInt()].key;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(_shortMonths[m.month - 1],
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: m == d.month ? FontWeight.w800 : FontWeight.w500,
+                          color: m == d.month ? AppColors.ink : AppColors.muted)),
+                );
+              },
+            ),
+          ),
+        ),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, _, rod, _) => BarTooltipItem(
+                formatMoney(rod.toY.round()), const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ),
+        barGroups: [
+          for (var i = 0; i < d.monthly.length; i++)
+            BarChartGroupData(x: i, barRods: [
+              BarChartRodData(
+                toY: d.monthly[i].value.toDouble(),
+                width: 22,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                color: d.monthly[i].key == d.month ? AppColors.green : AppColors.greenSoft,
+              ),
+            ]),
+        ],
+      )),
+    );
+  }
+
+  Widget _categories(AnalyticsData d) {
+    final entries = d.byCategory.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    if (entries.isEmpty) return const Text('Brak danych', style: TextStyle(color: AppColors.muted));
+    final sum = entries.fold(0, (a, e) => a + e.value);
+    return Column(children: [
+      SizedBox(
+        height: 190,
+        child: Stack(alignment: Alignment.center, children: [
+          PieChart(PieChartData(
+            sectionsSpace: 2,
+            centerSpaceRadius: 62,
+            pieTouchData: PieTouchData(touchCallback: (event, resp) {
+              final i = resp?.touchedSection?.touchedSectionIndex;
+              if (event.isInterestedForInteractions && i != null && i >= 0 && i < entries.length) {
+                setState(() => _focus = entries[i].key);
+              }
+            }),
+            sections: [
+              for (final e in entries)
+                PieChartSectionData(
+                  value: e.value.toDouble(),
+                  color: categoryColor(e.key),
+                  radius: _focus == e.key ? 34 : 26,
+                  showTitle: false,
+                ),
+            ],
+          )),
+          Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(_focus ?? 'Razem', style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+            Text(formatMoney(_focus == null ? sum : d.byCategory[_focus] ?? 0), style: mono(size: 18)),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      for (final e in entries)
+        InkWell(
+          onTap: () => setState(() => _focus = _focus == e.key ? null : e.key),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(children: [
+              Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(color: categoryColor(e.key), borderRadius: BorderRadius.circular(3))),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(e.key,
+                    style: TextStyle(
+                        fontWeight: _focus == e.key ? FontWeight.w800 : FontWeight.w500, fontSize: 15)),
+              ),
+              Text('${(e.value / sum * 100).round()}%', style: const TextStyle(color: AppColors.muted)),
+              const SizedBox(width: 12),
+              SizedBox(
+                  width: 96,
+                  child: Text(formatMoney(e.value), textAlign: TextAlign.right, style: mono(size: 14, weight: FontWeight.w500))),
+            ]),
+          ),
+        ),
+    ]);
+  }
+
+  Widget _daily(AnalyticsData d) {
+    final days = d.daysInMonth;
+    final maxY = d.daily.values.fold(0, (a, b) => a > b ? a : b).toDouble();
+    return SizedBox(
+      height: 160,
+      child: BarChart(BarChartData(
+        maxY: maxY == 0 ? 100 : maxY * 1.15,
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(),
+          rightTitles: const AxisTitles(),
+          leftTitles: const AxisTitles(),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 1,
+              getTitlesWidget: (v, _) {
+                final day = v.toInt() + 1;
+                return (day == 1 || day % 5 == 0)
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('$day', style: const TextStyle(fontSize: 11, color: AppColors.muted)))
+                    : const SizedBox();
+              },
+            ),
+          ),
+        ),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, _, rod, _) => BarTooltipItem(
+                '${group.x + 1} ${_shortMonths[d.month.month - 1]}\n${formatMoney(rod.toY.round())}',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+          ),
+        ),
+        barGroups: [
+          for (var day = 1; day <= days; day++)
+            BarChartGroupData(x: day - 1, barRods: [
+              BarChartRodData(
+                toY: (d.daily[day] ?? 0).toDouble(),
+                width: 5,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                color: AppColors.green,
+              ),
+            ]),
+        ],
+      )),
+    );
+  }
+
+  Widget _stores(AnalyticsData d) {
+    final maxV = d.topStores.first.value;
+    return Column(children: [
+      for (final s in d.topStores)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Expanded(child: Text(s.key, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
+              Text(formatMoney(s.value), style: mono(size: 14, weight: FontWeight.w500)),
+            ]),
+            const SizedBox(height: 4),
+            ProgressBar(maxV == 0 ? 0 : s.value / maxV, height: 6),
+          ]),
+        ),
+    ]);
+  }
+}
