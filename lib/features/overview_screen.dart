@@ -426,7 +426,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 foregroundColor: Colors.white,
               ),
               icon: const Icon(Icons.weekend_rounded, size: 18, color: Colors.white),
-              label: Text('${str.thisWeekend} (${str.addBudget})'),
+              label: Text(
+                '${str.thisWeekend} (${str.addBudget})',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
               onPressed: () => showPeriodicBudgetDialog(context),
             ),
             OutlinedButton.icon(
