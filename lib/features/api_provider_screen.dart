@@ -69,21 +69,27 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
     final sw = Stopwatch()..start();
     const system = 'Odpowiadaj wyłącznie JSON-em.';
     const prompt = 'Zwróć {"ok": true}. Obraz dołączony jest tylko do testu.';
+    final str = ref.read(appStringsProvider);
     try {
       LlmResult? res;
       try {
         res = await api.complete(
             system: system, user: prompt, image: Uint8List.fromList(_testPng),
             imageMime: 'image/png', json: true, maxTokens: 50);
-        out.add((true, 'Połączono · ${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'));
-        out.add((true, 'Obraz na wejściu: obsługiwany'));
+        out.add((true, str.isEnglish
+            ? 'Connected · ${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'
+            : 'Połączono · ${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'));
+        out.add((true, str.isEnglish ? 'Input image: supported' : 'Obraz na wejściu: obsługiwany'));
       } on LlmException catch (e) {
         if (e.statusCode == 401 || e.statusCode == 403 || e.statusCode == null) rethrow;
         // Reachable but rejected the image: check text-only to tell the two apart.
         final t = await api.complete(system: system, user: prompt, json: true, maxTokens: 50);
-        out.add((true, 'Połączono · ${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'));
-        out.add((false, 'Obraz na wejściu: model go nie przyjmuje (${e.message}). '
-            'Wybierz model z obsługą obrazu.'));
+        out.add((true, str.isEnglish
+            ? 'Connected · ${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'
+            : 'Połączono · ${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)} s'));
+        out.add((false, str.isEnglish
+            ? 'Input image: model does not accept it (${e.message}). Choose a vision model.'
+            : 'Obraz na wejściu: model go nie przyjmuje (${e.message}). Wybierz model z obsługą obrazu.'));
         res = t;
       }
       final text = res.text;
@@ -95,16 +101,20 @@ class _ApiProviderState extends ConsumerState<ApiProviderScreen> {
           jsonOk = true;
         } catch (_) {}
       }
-      out.add((jsonOk, 'Wyjście JSON: ${jsonOk ? 'obsługiwane' : 'model nie zwrócił poprawnego JSON-a'}'));
+      out.add((jsonOk, str.isEnglish
+          ? 'JSON output: ${jsonOk ? 'supported' : 'model did not return valid JSON'}'
+          : 'Wyjście JSON: ${jsonOk ? 'obsługiwane' : 'model nie zwrócił poprawnego JSON-a'}'));
     } catch (e) {
       out.add((false, e.toString()));
     }
     if (cfg.embeddingModel.isNotEmpty && cfg.format == ApiFormat.openai) {
       try {
         final v = await OpenAiEmbedder(cfg, key).embed(['czekolada']);
-        out.add((true, 'Embeddingi: działają (wymiar ${v.first.length})'));
+        out.add((true, str.isEnglish
+            ? 'Embeddings: working (dim ${v.first.length})'
+            : 'Embeddingi: działają (wymiar ${v.first.length})'));
       } catch (e) {
-        out.add((false, 'Embeddingi: $e'));
+        out.add((false, str.isEnglish ? 'Embeddings: $e' : 'Embeddingi: $e'));
       }
     }
     if (mounted) {

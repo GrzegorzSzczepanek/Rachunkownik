@@ -162,7 +162,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
 
   Widget _row(LocalModel m, ModelStatus s, ModelDownloads mgr, DeviceProfile device,
       bool deviceLoaded, bool recommended, bool isActive, AppStrings str) {
-    final fit = assessModel(m, device, alreadyDownloadedBytes: s.received);
+    final fit = assessModel(m, device, alreadyDownloadedBytes: s.received, isEnglish: str.isEnglish);
     final downloading = s.state == ModelState.downloading;
     final frac = m.totalBytes == 0 ? 0.0 : s.received / m.totalBytes;
     Widget action;

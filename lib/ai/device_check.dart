@@ -99,7 +99,7 @@ String _gb(num bytes) => '${(bytes / 1e9).toStringAsFixed(1).replaceAll('.', ','
 
 /// [alreadyDownloadedBytes] is subtracted from the disk requirement so a
 /// half-finished download is not penalised.
-ModelFit assessModel(LocalModel m, DeviceProfile d, {int alreadyDownloadedBytes = 0}) {
+ModelFit assessModel(LocalModel m, DeviceProfile d, {int alreadyDownloadedBytes = 0, bool isEnglish = false}) {
   final required = estimateRequiredRam(m);
   final total = d.totalRamBytes;
   if (total == null) {
@@ -107,8 +107,10 @@ ModelFit assessModel(LocalModel m, DeviceProfile d, {int alreadyDownloadedBytes 
       fit: Fit.unknown,
       requiredRamBytes: required,
       usableRamBytes: null,
-      headline: 'Nie wiem, czy pójdzie',
-      detail: 'Nie udało się odczytać RAM. Model potrzebuje ok. ${_gb(required)} pamięci.',
+      headline: isEnglish ? 'Compatibility unknown' : 'Nie wiem, czy pójdzie',
+      detail: isEnglish
+          ? 'Could not read RAM. Model requires ~${_gb(required)} memory.'
+          : 'Nie udało się odczytać RAM. Model potrzebuje ok. ${_gb(required)} pamięci.',
     );
   }
   // On iOS the OS tells us the exact headroom; elsewhere use a share of RAM.
@@ -122,8 +124,10 @@ ModelFit assessModel(LocalModel m, DeviceProfile d, {int alreadyDownloadedBytes 
       fit: Fit.tooHeavy,
       requiredRamBytes: required,
       usableRamBytes: usable,
-      headline: 'Za ciężki dla tego telefonu',
-      detail: 'Zalecane minimum to ${_gb(m.recommendedTotalRamBytes)} RAM, telefon ma ${_gb(total)}.',
+      headline: isEnglish ? 'Too heavy for this device' : 'Za ciężki dla tego telefonu',
+      detail: isEnglish
+          ? 'Recommended minimum is ${_gb(m.recommendedTotalRamBytes)} RAM, device has ${_gb(total)}.'
+          : 'Zalecane minimum to ${_gb(m.recommendedTotalRamBytes)} RAM, telefon ma ${_gb(total)}.',
     );
   }
 
@@ -134,32 +138,38 @@ ModelFit assessModel(LocalModel m, DeviceProfile d, {int alreadyDownloadedBytes 
       fit: Fit.noDisk,
       requiredRamBytes: required,
       usableRamBytes: usable,
-      headline: 'Za mało miejsca',
-      detail: 'Potrzeba ${_gb(needDisk)} wolnego miejsca, jest ${_gb(free)}.',
+      headline: isEnglish ? 'Not enough storage' : 'Za mało miejsca',
+      detail: isEnglish
+          ? 'Requires ${_gb(needDisk)} free space, available ${_gb(free)}.'
+          : 'Potrzeba ${_gb(needDisk)} wolnego miejsca, jest ${_gb(free)}.',
     );
   }
 
   final ratio = required / usable;
   final anon = estimateAnonymousRam(m);
-  final need = 'Potrzebuje ok. ${_gb(required)} RAM, aplikacja może użyć ok. ${_gb(usable)}.';
+  final need = isEnglish
+      ? 'Requires ~${_gb(required)} RAM, app can use ~${_gb(usable)}.'
+      : 'Potrzebuje ok. ${_gb(required)} RAM, aplikacja może użyć ok. ${_gb(usable)}.';
   if (ratio > 0.85) {
     if (anon > usable * 0.7) {
       return ModelFit(
         fit: Fit.tooHeavy,
         requiredRamBytes: required,
         usableRamBytes: usable,
-        headline: 'Za ciężki dla tego telefonu',
-        detail: '$need Nawet pamięć robocza (${_gb(anon)}) nie zmieści się. '
-            'System zamknąłby aplikację.',
+        headline: isEnglish ? 'Too heavy for this device' : 'Za ciężki dla tego telefonu',
+        detail: isEnglish
+            ? '$need Working memory alone (${_gb(anon)}) will not fit. System would terminate app.'
+            : '$need Nawet pamięć robocza (${_gb(anon)}) nie zmieści się. System zamknąłby aplikację.',
       );
     }
     return ModelFit(
       fit: Fit.tight,
       requiredRamBytes: required,
       usableRamBytes: usable,
-      headline: 'Pójdzie na styk',
-      detail: '$need Model nie zmieści się w całości w RAM, więc będzie wolniejszy. '
-          'Zamknij inne aplikacje przed skanowaniem.',
+      headline: isEnglish ? 'Tight fit' : 'Pójdzie na styk',
+      detail: isEnglish
+          ? '$need Model will not fully fit in RAM, so it will be slower. Close other apps before scanning.'
+          : '$need Model nie zmieści się w całości w RAM, więc będzie wolniejszy. Zamknij inne aplikacje przed skanowaniem.',
     );
   }
   final avail = d.availableRamBytes;
@@ -168,9 +178,11 @@ ModelFit assessModel(LocalModel m, DeviceProfile d, {int alreadyDownloadedBytes 
     fit: Fit.good,
     requiredRamBytes: required,
     usableRamBytes: usable,
-    headline: 'Pójdzie płynnie',
+    headline: isEnglish ? 'Runs smoothly' : 'Pójdzie płynnie',
     detail: lowFree
-        ? '$need Teraz jest zajęte dużo pamięci, system zwolni ją na żądanie.'
+        ? (isEnglish
+            ? '$need High memory in use right now, system will reclaim on demand.'
+            : '$need Teraz jest zajęte dużo pamięci, system zwolni ją na żądanie.')
         : need,
   );
 }

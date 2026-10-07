@@ -67,7 +67,10 @@ Future<void> startScan(BuildContext context) async {
     if (!context.mounted) return;
     nav.push(MaterialPageRoute(builder: (_) => ProcessingScreen(image: bytes)));
   } catch (e) {
-    if (context.mounted) showError(context, 'Nie udało się wczytać zdjęcia: $e');
+    if (context.mounted) {
+      final str = ProviderScope.containerOf(context).read(appStringsProvider);
+      showError(context, str.isEnglish ? 'Failed to load photo: $e' : 'Nie udało się wczytać zdjęcia: $e');
+    }
   }
 }
 
