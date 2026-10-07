@@ -420,8 +420,12 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
           Text(str.budgetsHint, style: const TextStyle(color: AppColors.muted)),
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.weekend_rounded, size: 18),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.weekend_rounded, size: 18, color: Colors.white),
               label: Text('${str.thisWeekend} (${str.addBudget})'),
               onPressed: () => showPeriodicBudgetDialog(context),
             ),
