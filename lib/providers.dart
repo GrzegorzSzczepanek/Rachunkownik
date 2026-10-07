@@ -184,6 +184,11 @@ final incomesProvider = FutureProvider<List<Income>>((ref) async {
   return ref.read(dbProvider).incomes();
 });
 
+final periodicBudgetsProvider = FutureProvider<List<PeriodicBudget>>((ref) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(dbProvider).periodicBudgets();
+});
+
 final subscriptionsProvider = FutureProvider<List<Subscription>>((ref) async {
   ref.watch(dataVersionProvider);
   return ref.read(dbProvider).subscriptions();

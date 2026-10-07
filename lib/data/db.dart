@@ -21,7 +21,7 @@ class AppDb {
       databaseFactory = databaseFactoryFfi;
     }
     final file = path ?? p.join((await getApplicationSupportDirectory()).path, 'rachunkownik.db');
-    final db = await openDatabase(file, version: 4, onCreate: _create, onUpgrade: _upgrade);
+    final db = await openDatabase(file, version: 5, onCreate: _create, onUpgrade: _upgrade);
     return AppDb(db);
   }
 
@@ -47,12 +47,23 @@ class AppDb {
     await _createBankTable(db);
     await _createVectorTable(db);
     await _createIncomeTable(db);
+    await _createPeriodicBudgetsTable(db);
   }
 
   static Future<void> _upgrade(Database db, int from, int to) async {
     if (from < 2) await _createBankTable(db);
     if (from < 3) await _createVectorTable(db);
     if (from < 4) await _createIncomeTable(db);
+    if (from < 5) await _createPeriodicBudgetsTable(db);
+  }
+
+  static Future<void> _createPeriodicBudgetsTable(Database db) async {
+    await db.execute('''CREATE TABLE periodic_budgets(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL, category TEXT, limit_cents INTEGER NOT NULL,
+      period TEXT NOT NULL, start_date INTEGER NOT NULL, end_date INTEGER NOT NULL,
+      is_recurring INTEGER NOT NULL DEFAULT 0)''');
+    await db.execute('CREATE INDEX idx_periodic_budgets_dates ON periodic_budgets(start_date, end_date)');
   }
 
   static Future<void> _createIncomeTable(Database db) async {
@@ -385,6 +396,93 @@ class AppDb {
     }
   }
 
+  // ---- periodic budgets ----
+
+  Future<List<PeriodicBudget>> periodicBudgets() async {
+    final rows = await _db.query('periodic_budgets', orderBy: 'start_date DESC');
+    final now = DateTime.now();
+    final list = <PeriodicBudget>[];
+    for (final r in rows) {
+      final period = BudgetPeriod.values.byName((r['period'] as String?) ?? 'custom');
+      final isRecurring = (r['is_recurring'] as int? ?? 0) == 1;
+      var start = DateTime.fromMillisecondsSinceEpoch(r['start_date'] as int);
+      var end = DateTime.fromMillisecondsSinceEpoch(r['end_date'] as int);
+
+      if (isRecurring && period == BudgetPeriod.weekly) {
+        final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+        start = monday;
+        end = DateTime(monday.year, monday.month, monday.day).add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+      }
+
+      final cat = r['category'] as String?;
+      final startEpoch = DateTime(start.year, start.month, start.day).millisecondsSinceEpoch;
+      final endExclusive = DateTime(end.year, end.month, end.day).add(const Duration(days: 1));
+      final endEpoch = endExclusive.millisecondsSinceEpoch;
+
+      int spent;
+      if (cat == null || cat.isEmpty || cat == 'Wszystkie' || cat == 'All') {
+        final res = await _db.rawQuery(
+          'SELECT SUM(total) AS s FROM receipts WHERE date >= ? AND date < ?',
+          [startEpoch, endEpoch],
+        );
+        spent = (res.first['s'] as int?) ?? 0;
+      } else {
+        final res = await _db.rawQuery('''
+          SELECT SUM(i.cents) AS s FROM items i
+          JOIN receipts r ON r.id = i.receipt_id
+          WHERE r.date >= ? AND date < ? AND i.category = ?''',
+          [startEpoch, endEpoch, cat],
+        );
+        spent = (res.first['s'] as int?) ?? 0;
+      }
+
+      list.add(PeriodicBudget(
+        id: r['id'] as int?,
+        name: r['name'] as String,
+        category: (cat == null || cat.isEmpty || cat == 'Wszystkie' || cat == 'All') ? null : cat,
+        limitCents: r['limit_cents'] as int,
+        period: period,
+        startDate: start,
+        endDate: end,
+        isRecurring: isRecurring,
+        spentCents: spent,
+      ));
+    }
+    return list;
+  }
+
+  Future<int> savePeriodicBudget(PeriodicBudget pb) => _db.insert('periodic_budgets', {
+        'name': pb.name,
+        'category': pb.category,
+        'limit_cents': pb.limitCents,
+        'period': pb.period.name,
+        'start_date': pb.startDate.millisecondsSinceEpoch,
+        'end_date': pb.endDate.millisecondsSinceEpoch,
+        'is_recurring': pb.isRecurring ? 1 : 0,
+      });
+
+  Future<void> updatePeriodicBudget(PeriodicBudget pb) {
+    final id = pb.id;
+    if (id == null) throw ArgumentError('PeriodicBudget has no id');
+    return _db.update(
+      'periodic_budgets',
+      {
+        'name': pb.name,
+        'category': pb.category,
+        'limit_cents': pb.limitCents,
+        'period': pb.period.name,
+        'start_date': pb.startDate.millisecondsSinceEpoch,
+        'end_date': pb.endDate.millisecondsSinceEpoch,
+        'is_recurring': pb.isRecurring ? 1 : 0,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deletePeriodicBudget(int id) =>
+      _db.delete('periodic_budgets', where: 'id = ?', whereArgs: [id]);
+
   // ---- subscriptions ----
 
   Future<List<Subscription>> subscriptions() async =>
@@ -503,6 +601,7 @@ class AppDb {
     final dismissedRows = await _db.query('dismissed_subs');
     final bankRows = await _db.query('bank_transactions', orderBy: 'date ASC');
     final incomeRows = await _db.query('incomes', orderBy: 'id ASC');
+    final periodicBudgetsRows = await _db.query('periodic_budgets', orderBy: 'id ASC');
 
     final itemsByReceipt = <int, List<Map<String, dynamic>>>{};
     for (final i in itemsRows) {
@@ -548,6 +647,18 @@ class AppDb {
       'budgets': [
         for (final b in budgetsRows)
           {'category': b['category'], 'limit_cents': b['limit_cents']}
+      ],
+      'periodic_budgets': [
+        for (final pb in periodicBudgetsRows)
+          {
+            'name': pb['name'],
+            'category': pb['category'],
+            'limit_cents': pb['limit_cents'],
+            'period': pb['period'],
+            'start_date': pb['start_date'],
+            'end_date': pb['end_date'],
+            'is_recurring': pb['is_recurring'],
+          }
       ],
       'subscriptions': [
         for (final s in subscriptionsRows)
@@ -597,6 +708,7 @@ class AppDb {
 
     final rawReceipts = (data['receipts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final rawBudgets = (data['budgets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final rawPeriodicBudgets = (data['periodic_budgets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final rawSubs = (data['subscriptions'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final rawDismissed = (data['dismissed_subs'] as List?)?.cast<String>() ?? [];
     final rawBank = (data['bank_transactions'] as List?)?.cast<Map<String, dynamic>>() ?? [];
@@ -611,6 +723,7 @@ class AppDb {
       await tx.delete('receipts');
       await tx.delete('incomes');
       await tx.delete('budgets');
+      await tx.delete('periodic_budgets');
       await tx.delete('subscriptions');
       await tx.delete('dismissed_subs');
 
@@ -661,6 +774,24 @@ class AppDb {
             'category': cat,
             'limit_cents': limit,
           }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      }
+
+      for (final pb in rawPeriodicBudgets) {
+        final name = pb['name'] as String?;
+        final limit = (pb['limit_cents'] as num?)?.toInt();
+        final start = (pb['start_date'] as num?)?.toInt();
+        final end = (pb['end_date'] as num?)?.toInt();
+        if (name != null && limit != null && start != null && end != null) {
+          await tx.insert('periodic_budgets', {
+            'name': name,
+            'category': pb['category'] as String?,
+            'limit_cents': limit,
+            'period': (pb['period'] as String?) ?? 'custom',
+            'start_date': start,
+            'end_date': end,
+            'is_recurring': (pb['is_recurring'] == 1 || pb['is_recurring'] == true) ? 1 : 0,
+          });
         }
       }
 

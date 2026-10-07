@@ -82,6 +82,66 @@ class Budget {
   final int limitCents;
 }
 
+enum BudgetPeriod {
+  weekly,
+  custom,
+}
+
+class PeriodicBudget {
+  PeriodicBudget({
+    this.id,
+    required this.name,
+    this.category,
+    required this.limitCents,
+    this.period = BudgetPeriod.custom,
+    required this.startDate,
+    required this.endDate,
+    this.isRecurring = false,
+    this.spentCents = 0,
+  });
+
+  final int? id;
+  final String name;
+  final String? category;
+  final int limitCents;
+  final BudgetPeriod period;
+  final DateTime startDate;
+  final DateTime endDate;
+  final bool isRecurring;
+  final int spentCents;
+
+  int get remainingCents => limitCents - spentCents;
+  double get fraction => limitCents > 0 ? spentCents / limitCents : 0.0;
+  bool get isOverBudget => spentCents > limitCents;
+
+  bool get isActive {
+    final now = DateTime.now();
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    return !now.isBefore(start) && !now.isAfter(end);
+  }
+
+  bool get isUpcoming {
+    final now = DateTime.now();
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    return now.isBefore(start);
+  }
+
+  bool get isPast {
+    final now = DateTime.now();
+    final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    return now.isAfter(end);
+  }
+
+  int get daysRemaining {
+    final now = DateTime.now();
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = end.difference(today).inDays;
+    return diff < 0 ? 0 : diff;
+  }
+}
+
 enum BillingPeriod { monthly, yearly }
 
 class Subscription {

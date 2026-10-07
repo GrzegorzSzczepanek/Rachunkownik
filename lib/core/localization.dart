@@ -236,6 +236,25 @@ class AppStrings {
     required this.quantity,
     required this.unitPrice,
     required this.separateItems,
+    required this.addBudget,
+    required this.editBudget,
+    required this.deleteBudget,
+    required this.budgetName,
+    required this.budgetNameHint,
+    required this.budgetLimit,
+    required this.budgetPeriod,
+    required this.thisWeekend,
+    required this.thisWeek,
+    required this.customPeriod,
+    required this.recurringWeekly,
+    required this.allExpenses,
+    required this.categoryBudgets,
+    required this.budgetActive,
+    required this.budgetUpcoming,
+    required this.budgetFinished,
+    required this.tripAndPeriodBudgets,
+    required this.noPeriodicBudgets,
+    required this.daysRemainingLabel,
   });
 
   const AppStrings.pl()
@@ -419,7 +438,26 @@ class AppStrings {
         saveAsCopy = 'Zapisz jako kopię',
         quantity = 'Ilość',
         unitPrice = 'Cena za sztukę',
-        separateItems = 'Dodaj jako osobne pozycje';
+        separateItems = 'Dodaj jako osobne pozycje',
+        addBudget = 'Dodaj budżet',
+        editBudget = 'Edytuj budżet',
+        deleteBudget = 'Usuń budżet',
+        budgetName = 'Nazwa budżetu',
+        budgetNameHint = 'np. Weekend w górach, Wyjazd',
+        budgetLimit = 'Limit budżetu',
+        budgetPeriod = 'Okres budżetu',
+        thisWeekend = 'Ten weekend',
+        thisWeek = 'Ten tydzień',
+        customPeriod = 'Własny okres',
+        recurringWeekly = 'Odnawiaj co tydzień',
+        allExpenses = 'Wszystkie wydatki',
+        categoryBudgets = 'Budżety kategorii',
+        budgetActive = 'Aktywny',
+        budgetUpcoming = 'Nadchodzący',
+        budgetFinished = 'Zakończony',
+        tripAndPeriodBudgets = 'Budżety wyjazdowe i okresowe',
+        noPeriodicBudgets = 'Brak budżetów okresowych. Dodaj budżet na weekend lub wyjazd!',
+        daysRemainingLabel = 'Pozostało dni: ';
 
   const AppStrings.en()
       : isEnglish = true,
@@ -602,7 +640,26 @@ class AppStrings {
         saveAsCopy = 'Save as copy',
         quantity = 'Quantity',
         unitPrice = 'Unit price',
-        separateItems = 'Add as separate items';
+        separateItems = 'Add as separate items',
+        addBudget = 'Add budget',
+        editBudget = 'Edit budget',
+        deleteBudget = 'Delete budget',
+        budgetName = 'Budget name',
+        budgetNameHint = 'e.g. Weekend getaway, Vacation',
+        budgetLimit = 'Budget limit',
+        budgetPeriod = 'Budget period',
+        thisWeekend = 'This weekend',
+        thisWeek = 'This week',
+        customPeriod = 'Custom period',
+        recurringWeekly = 'Renew every week',
+        allExpenses = 'All expenses',
+        categoryBudgets = 'Category budgets',
+        budgetActive = 'Active',
+        budgetUpcoming = 'Upcoming',
+        budgetFinished = 'Finished',
+        tripAndPeriodBudgets = 'Trip & period budgets',
+        noPeriodicBudgets = 'No period budgets. Add a budget for a weekend or trip!',
+        daysRemainingLabel = 'Days left: ';
 
   final bool isEnglish;
   final String appName;
@@ -785,6 +842,25 @@ class AppStrings {
   final String quantity;
   final String unitPrice;
   final String separateItems;
+  final String addBudget;
+  final String editBudget;
+  final String deleteBudget;
+  final String budgetName;
+  final String budgetNameHint;
+  final String budgetLimit;
+  final String budgetPeriod;
+  final String thisWeekend;
+  final String thisWeek;
+  final String customPeriod;
+  final String recurringWeekly;
+  final String allExpenses;
+  final String categoryBudgets;
+  final String budgetActive;
+  final String budgetUpcoming;
+  final String budgetFinished;
+  final String tripAndPeriodBudgets;
+  final String noPeriodicBudgets;
+  final String daysRemainingLabel;
 
   String aiTaskLabel(AiTask t) {
     if (!isEnglish) return t.label;

@@ -9,6 +9,7 @@ import '../core/theme.dart';
 import '../domain/models.dart';
 import '../providers.dart';
 import 'income_dialog.dart';
+import 'periodic_budget_dialog.dart';
 import 'scan_flow.dart' show ReviewScreen;
 import 'widgets.dart';
 
@@ -91,6 +92,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     final str = ref.watch(appStringsProvider);
     final summary = ref.watch(monthSummaryProvider);
     final receipts = ref.watch(receiptsProvider);
+    final periodicBudgets = ref.watch(periodicBudgetsProvider).valueOrNull ?? [];
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
@@ -273,7 +275,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
             ),
         ],
         const SizedBox(height: 20),
-        summary.maybeWhen(data: (s) => _budgets(context, s), orElse: () => const SizedBox()),
+        summary.maybeWhen(data: (s) => _budgets(context, s, periodicBudgets), orElse: () => const SizedBox()),
         const SizedBox(height: 20),
         SectionCard(
           padding: EdgeInsets.zero,
@@ -391,35 +393,166 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
     ]);
   }
 
-  Widget _budgets(BuildContext context, MonthSummary s) {
+  Widget _budgets(BuildContext context, MonthSummary s, List<PeriodicBudget> periodicBudgets) {
     final str = ref.watch(appStringsProvider);
+    final hasCategoryBudgets = s.budgets.isNotEmpty;
+    final hasPeriodicBudgets = periodicBudgets.isNotEmpty;
+    final isEmpty = !hasCategoryBudgets && !hasPeriodicBudgets;
+
     return SectionCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text(str.budgets, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          TextButton(onPressed: () => _editBudgets(context, s), child: Text(str.edit)),
+          Wrap(spacing: 4, children: [
+            TextButton.icon(
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(str.addBudget),
+              onPressed: () => showPeriodicBudgetDialog(context),
+            ),
+            TextButton(
+              onPressed: () => _editBudgets(context, s),
+              child: Text(str.categoryBudgets),
+            ),
+          ]),
         ]),
-        if (s.budgets.isEmpty)
-          Text(str.budgetsHint,
-              style: const TextStyle(color: AppColors.muted)),
-        for (final b in s.budgets) ...[
+        if (isEmpty) ...[
+          const SizedBox(height: 8),
+          Text(str.budgetsHint, style: const TextStyle(color: AppColors.muted)),
           const SizedBox(height: 12),
-          Builder(builder: (_) {
-            final spent = s.byCategory[b.category] ?? 0;
-            final f = spent / b.limitCents;
-            final warn = f >= 0.8;
-            final color = warn ? AppColors.amber : AppColors.green;
-            return Column(children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text(str.categoryName(b.category), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                Text('${formatMoney(spent, withCurrency: false)} / ${formatMoney(b.limitCents)} · ${(f * 100).round()}%',
-                    style: mono(size: 13, weight: warn ? FontWeight.w700 : FontWeight.w400,
-                        color: warn ? AppColors.amberInk : AppColors.muted)),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.weekend_rounded, size: 18),
+              label: Text('${str.thisWeekend} (${str.addBudget})'),
+              onPressed: () => showPeriodicBudgetDialog(context),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: Text(str.categoryBudgets),
+              onPressed: () => _editBudgets(context, s),
+            ),
+          ]),
+        ],
+        if (hasPeriodicBudgets) ...[
+          const SizedBox(height: 8),
+          Text(str.tripAndPeriodBudgets,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
+          for (final pb in periodicBudgets) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.chip.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: pb.isOverBudget
+                      ? Colors.red.withValues(alpha: 0.4)
+                      : (pb.fraction >= 0.8 ? AppColors.amber.withValues(alpha: 0.4) : AppColors.border),
+                ),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      pb.name,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  if (pb.isUpcoming)
+                    Pill(str.budgetUpcoming, bg: AppColors.blueSoft, fg: AppColors.blue)
+                  else if (pb.isPast)
+                    Pill(str.budgetFinished, bg: AppColors.track, fg: AppColors.muted)
+                  else
+                    Pill(
+                      '${str.budgetActive} · ${pb.daysRemaining == 0 ? (str.isEnglish ? "Last day" : "Dziś koniec") : "${pb.daysRemaining}d"}',
+                      bg: AppColors.greenSoft,
+                      fg: AppColors.green,
+                    ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
+                    tooltip: str.editBudget,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => showPeriodicBudgetDialog(context, initial: pb),
+                  ),
+                ]),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Text(
+                    '${shortDate(pb.startDate, isEnglish: str.isEnglish)} – ${shortDate(pb.endDate, isEnglish: str.isEnglish)}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
+                  if (pb.isRecurring) ...[
+                    const SizedBox(width: 6),
+                    Pill(str.recurringWeekly, bg: AppColors.chip, fg: AppColors.muted),
+                  ],
+                  const SizedBox(width: 6),
+                  Pill(
+                    pb.category != null ? str.categoryName(pb.category!) : str.allExpenses,
+                    bg: AppColors.chip,
+                    fg: AppColors.ink,
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text(
+                    '${formatMoney(pb.spentCents, withCurrency: false)} / ${formatMoney(pb.limitCents)} · ${(pb.fraction * 100).round()}%',
+                    style: mono(
+                      size: 13,
+                      weight: pb.isOverBudget ? FontWeight.w700 : FontWeight.w500,
+                      color: pb.isOverBudget ? Colors.red : (pb.fraction >= 0.8 ? AppColors.amberInk : AppColors.muted),
+                    ),
+                  ),
+                  Text(
+                    pb.isOverBudget
+                        ? '${str.overBudget} ${formatMoney(pb.spentCents - pb.limitCents)}'
+                        : '${str.remaining} ${formatMoney(pb.remainingCents)}',
+                    style: mono(
+                      size: 12,
+                      weight: FontWeight.w600,
+                      color: pb.isOverBudget ? Colors.red : AppColors.muted,
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                ProgressBar(
+                  pb.fraction,
+                  color: pb.isOverBudget
+                      ? Colors.red
+                      : (pb.fraction >= 0.8 ? AppColors.amber : AppColors.green),
+                ),
               ]),
-              const SizedBox(height: 6),
-              ProgressBar(f, color: color),
-            ]);
-          }),
+            ),
+          ],
+        ],
+        if (hasCategoryBudgets) ...[
+          const SizedBox(height: 14),
+          if (hasPeriodicBudgets) ...[
+            Text(str.categoryBudgets,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
+            const SizedBox(height: 4),
+          ],
+          for (final b in s.budgets) ...[
+            const SizedBox(height: 10),
+            Builder(builder: (_) {
+              final spent = s.byCategory[b.category] ?? 0;
+              final f = spent / b.limitCents;
+              final warn = f >= 0.8;
+              final color = warn ? AppColors.amber : AppColors.green;
+              return Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text(str.categoryName(b.category), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  Text('${formatMoney(spent, withCurrency: false)} / ${formatMoney(b.limitCents)} · ${(f * 100).round()}%',
+                      style: mono(
+                          size: 13,
+                          weight: warn ? FontWeight.w700 : FontWeight.w400,
+                          color: warn ? AppColors.amberInk : AppColors.muted)),
+                ]),
+                const SizedBox(height: 6),
+                ProgressBar(f, color: color),
+              ]);
+            }),
+          ],
         ],
       ]),
     );
