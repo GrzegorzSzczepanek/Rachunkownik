@@ -21,6 +21,41 @@ class AppUpdateInfo {
   final String downloadUrl;
 }
 
+/// Checks if [latest] is strictly newer than [current] using semantic versioning.
+bool isNewerVersion(String latest, String current) {
+  List<int> parseParts(String v) {
+    final clean = v.trim().replaceFirst(RegExp(r'^[vV]'), '').split('+').first;
+    final parts = clean.split('.');
+    return parts.map((p) => int.tryParse(p.replaceAll(RegExp(r'\D.*'), '')) ?? 0).toList();
+  }
+
+  int? parseBuild(String v) {
+    final split = v.trim().split('+');
+    if (split.length > 1) {
+      return int.tryParse(split[1].replaceAll(RegExp(r'\D.*'), ''));
+    }
+    return null;
+  }
+
+  final l = parseParts(latest);
+  final c = parseParts(current);
+  final maxLen = l.length > c.length ? l.length : c.length;
+  for (var i = 0; i < maxLen; i++) {
+    final lVal = i < l.length ? l[i] : 0;
+    final cVal = i < c.length ? c[i] : 0;
+    if (lVal > cVal) return true;
+    if (lVal < cVal) return false;
+  }
+
+  final lBuild = parseBuild(latest);
+  final cBuild = parseBuild(current);
+  if (lBuild != null && cBuild != null) {
+    return lBuild > cBuild;
+  }
+
+  return false;
+}
+
 abstract class AppUpdateClient {
   Future<AppUpdateInfo?> checkForUpdate();
 }
@@ -46,7 +81,7 @@ class GitHubUpdateClient implements AppUpdateClient {
   @override
   Future<AppUpdateInfo?> checkForUpdate() async {
     try {
-      // 1. Check GitHub Releases first (for published APK assets or release tags)
+      // 1. Check GitHub Releases first (authoritative source for APK assets)
       try {
         final res = await _dio.get<Map<String, dynamic>>(
           'https://api.github.com/repos/$repo/releases/latest',
@@ -67,22 +102,21 @@ class GitHubUpdateClient implements AppUpdateClient {
             }
           }
 
-          final cleanTag = tag.replaceFirst(RegExp(r'^v'), '');
-          if (cleanTag.isNotEmpty && cleanTag != currentVersion) {
-            return AppUpdateInfo(
-              hasUpdate: true,
-              currentVersion: currentVersion,
-              latestVersion: tag,
-              releaseNotes: body,
-              downloadUrl: apkUrl ?? htmlUrl,
-            );
-          }
+          final cleanTag = tag.replaceFirst(RegExp(r'^[vV]'), '');
+          final hasUpdate = isNewerVersion(cleanTag, currentVersion);
+          return AppUpdateInfo(
+            hasUpdate: hasUpdate,
+            currentVersion: currentVersion,
+            latestVersion: tag,
+            releaseNotes: body,
+            downloadUrl: apkUrl ?? htmlUrl,
+          );
         }
       } catch (_) {
         // Releases endpoint returns 404 when no releases are published yet; continue to commits check
       }
 
-      // 2. Check latest commit on repo
+      // 2. Check latest commit on repo (only as fallback when no releases exist)
       try {
         final commitRes = await _dio.get<List<dynamic>>(
           'https://api.github.com/repos/$repo/commits',
@@ -127,7 +161,11 @@ class GitHubUpdateClient implements AppUpdateClient {
   }
 }
 
-Future<void> showUpdateDialog(BuildContext context, AppUpdateInfo update) async {
+Future<void> showUpdateDialog(
+  BuildContext context,
+  AppUpdateInfo update, {
+  VoidCallback? onDismiss,
+}) async {
   return showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -169,7 +207,10 @@ Future<void> showUpdateDialog(BuildContext context, AppUpdateInfo update) async 
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx),
+          onPressed: () {
+            onDismiss?.call();
+            Navigator.pop(ctx);
+          },
           child: const Text('Później'),
         ),
         FilledButton(

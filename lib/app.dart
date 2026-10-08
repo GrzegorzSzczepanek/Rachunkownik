@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_update.dart';
 import 'core/biometric_lock_gate.dart';
@@ -76,9 +77,24 @@ class _RachunkownikAppState extends ConsumerState<RachunkownikApp> with WidgetsB
         final client = ref.read(appUpdateClientProvider);
         final update = await client.checkForUpdate();
         if (update != null && update.hasUpdate && mounted) {
+          final prefs = await SharedPreferences.getInstance();
+          final dismissedVersion = prefs.getString('update.dismissed_version');
+          final lastDismissedMs = prefs.getInt('update.dismissed_time') ?? 0;
+          final hoursSinceDismiss =
+              (DateTime.now().millisecondsSinceEpoch - lastDismissedMs) / (1000 * 60 * 60);
+
+          if (dismissedVersion == update.latestVersion && hoursSinceDismiss < 24) {
+            // Dismissed recently; do not interrupt the user on launch
+            return;
+          }
+
           final navCtx = _router.routerDelegate.navigatorKey.currentContext;
           if (navCtx != null && navCtx.mounted) {
-            showUpdateDialog(navCtx, update);
+            showUpdateDialog(navCtx, update, onDismiss: () async {
+              final p = await SharedPreferences.getInstance();
+              await p.setString('update.dismissed_version', update.latestVersion);
+              await p.setInt('update.dismissed_time', DateTime.now().millisecondsSinceEpoch);
+            });
           }
         }
       } catch (_) {}

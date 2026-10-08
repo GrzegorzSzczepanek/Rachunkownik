@@ -118,6 +118,53 @@ void main() {
       expect(update, isNotNull);
       expect(update!.hasUpdate, isFalse);
     });
+
+    test('reports no update when on latest release even if new commits exist', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = MockAdapter((options) {
+        if (options.path.contains('/releases/latest')) {
+          return ResponseBody.fromString(
+            '{"tag_name": "v1.2.2", "html_url": "https://github.com/test"}',
+            200,
+            headers: {'content-type': ['application/json']},
+          );
+        }
+        if (options.path.contains('/commits')) {
+          return ResponseBody.fromString(
+            '''[
+              {
+                "sha": "999999999999",
+                "commit": {"message": "unreleased work-in-progress"}
+              }
+            ]''',
+            200,
+            headers: {'content-type': ['application/json']},
+          );
+        }
+        return ResponseBody.fromString('[]', 200);
+      });
+
+      final client = GitHubUpdateClient(
+        currentSha: '1111111111',
+        currentVersion: '1.2.2',
+        dio: dio,
+      );
+
+      final update = await client.checkForUpdate();
+      expect(update, isNotNull);
+      expect(update!.hasUpdate, isFalse);
+    });
+
+    test('isNewerVersion semantic version comparisons', () {
+      expect(isNewerVersion('1.2.2', '1.2.2'), isFalse);
+      expect(isNewerVersion('v1.2.2', '1.2.2'), isFalse);
+      expect(isNewerVersion('1.2.1', '1.2.2'), isFalse);
+      expect(isNewerVersion('v1.2.3', '1.2.2'), isTrue);
+      expect(isNewerVersion('v1.3.0', '1.2.2'), isTrue);
+      expect(isNewerVersion('v2.0.0', '1.9.9'), isTrue);
+      expect(isNewerVersion('1.2.2+6', '1.2.2+5'), isTrue);
+      expect(isNewerVersion('1.2.2+5', '1.2.2+5'), isFalse);
+    });
   });
 
   group('showUpdateDialog', () {
