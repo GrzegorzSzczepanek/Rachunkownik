@@ -158,7 +158,7 @@ class HeroBackHeader extends StatelessWidget {
         child: Row(children: [
           Transform.translate(
             offset: const Offset(-12, 0),
-            child: IconButton(tooltip: 'Wróć', icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.maybePop(context)),
+            child: const BackButton(),
           ),
           Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: display(size))),
           ...actions,

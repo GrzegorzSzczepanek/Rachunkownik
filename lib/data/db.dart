@@ -503,6 +503,18 @@ class AppDb {
         'active': s.active ? 1 : 0,
       });
 
+  Future<void> updateSubscription(Subscription s) => _db.update(
+      'subscriptions',
+      {
+        'name': s.name,
+        'cents': s.cents,
+        'period': s.period.name,
+        'next_date': s.nextDate.millisecondsSinceEpoch,
+        'active': s.active ? 1 : 0,
+      },
+      where: 'id = ?',
+      whereArgs: [s.id]);
+
   Future<void> deleteSubscription(int id) =>
       _db.delete('subscriptions', where: 'id = ?', whereArgs: [id]);
 

@@ -317,47 +317,29 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
 }
 
 class IncomeTile extends ConsumerWidget {
-  const IncomeTile(this.inc, {super.key, this.onTap, this.onLongPress});
+  const IncomeTile(this.inc, {super.key, this.onTap, this.onLongPress, this.bottomLine = false});
   final Income inc;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
+  final VoidCallback? onTap, onLongPress;
+  final bool bottomLine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final str = ref.watch(appStringsProvider);
-    final when = str.relativeDate(inc.date);
-
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+        constraints: const BoxConstraints(minHeight: 68),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line), bottom: bottomLine ? BorderSide(color: AppColors.line) : BorderSide.none)),
         child: Row(children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.greenSoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(incomeIconFor(inc.category), color: AppColors.green, size: 24),
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(inc.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 2),
-              Row(children: [
-                Text(when, style: TextStyle(color: AppColors.muted, fontSize: 13)),
-                Text(' · ', style: TextStyle(color: AppColors.muted)),
-                Text(str.categoryName(inc.category),
-                    style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w600, fontSize: 13)),
-              ]),
+              Text(inc.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: fig(17, weight: 700)),
+              Text('${str.relativeDate(inc.date)}, ${str.categoryName(inc.category)}', style: fig(14, color: AppColors.text2)),
             ]),
           ),
-          Text('+${formatMoney(inc.cents)}',
-              style: figure(size: 16, weight: FontWeight.w700, color: AppColors.green)),
+          const SizedBox(width: 12),
+          Text('+${formatMoney(inc.cents)}', style: fig(17, weight: 700, color: AppColors.income)),
         ]),
       ),
     );

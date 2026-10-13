@@ -60,6 +60,8 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Biedronka'));
     await settle(tester);
+    await tester.tap(find.text('Edytuj sklep, datę i pozycje'));
+    await settle(tester);
     expect(find.text('Zapisz zmiany'), findsOneWidget);
     expect(find.byIcon(Icons.delete_outline), findsOneWidget);
 
@@ -121,6 +123,8 @@ void main() {
     await tester.tap(find.text('Paragony').last);
     await settle(tester);
     await tester.tap(find.text('Lidl'));
+    await settle(tester);
+    await tester.tap(find.text('Edytuj sklep, datę i pozycje'));
     await settle(tester);
 
     // 1. Copy item from list using copy icon
