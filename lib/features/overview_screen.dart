@@ -2,640 +2,180 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../ai/spending_chat.dart';
 import '../core/localization.dart';
 import '../core/money.dart';
 import '../core/theme.dart';
 import '../domain/models.dart';
 import '../providers.dart';
+import 'budgets_screen.dart';
+import 'chat_screen.dart';
 import 'income_dialog.dart';
-import 'periodic_budget_dialog.dart';
 import 'scan_flow.dart' show ReviewScreen;
 import 'widgets.dart';
 
-class OverviewScreen extends ConsumerStatefulWidget {
+/// Przegląd per design/Main and Przeglad-dol: one hero number (spent), budget bar and
+/// balance in the hero, the chat field as the only "add" action, flat lists below.
+class OverviewScreen extends ConsumerWidget {
   const OverviewScreen({super.key});
-  @override
-  ConsumerState<OverviewScreen> createState() => _OverviewState();
-}
-
-class _OverviewState extends ConsumerState<OverviewScreen> {
-  final _q = TextEditingController();
-  ChatAnswer? _answer;
-  bool _asking = false;
-
-  Future<void> _ask() async {
-    final q = _q.text.trim();
-    if (q.isEmpty) return;
-    setState(() => _asking = true);
-    try {
-      final chat = await ref.read(aiSettingsProvider.notifier).chat();
-      final a = await chat.ask(q);
-      if (mounted) {
-        setState(() => _answer = a);
-        if (a.createdReceipt != null || a.createdIncome != null) {
-          _q.clear();
-          ref.read(dataVersionProvider.notifier).bump();
-        }
-      }
-    } catch (e) {
-      if (mounted) showError(context, e);
-    } finally {
-      if (mounted) setState(() => _asking = false);
-    }
-  }
-
-  Future<void> _undoReceipt(Receipt r) async {
-    final id = r.id;
-    if (id == null) return;
-    try {
-      await ref.read(dbProvider).deleteReceipt(id);
-      ref.read(dataVersionProvider.notifier).bump();
-      setState(() => _answer = null);
-      if (mounted) {
-        final str = ref.read(appStringsProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${str.undoSuccess}: ${r.store}'),
-            backgroundColor: AppColors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
-  }
-
-  Future<void> _undoIncome(Income inc) async {
-    final id = inc.id;
-    if (id == null) return;
-    try {
-      await ref.read(dbProvider).deleteIncome(id);
-      ref.read(dataVersionProvider.notifier).bump();
-      setState(() => _answer = null);
-      if (mounted) {
-        final str = ref.read(appStringsProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${str.incomeUndone}: ${inc.title}'),
-            backgroundColor: AppColors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final str = ref.watch(appStringsProvider);
-    final summary = ref.watch(monthSummaryProvider);
-    final receipts = ref.watch(receiptsProvider);
-    final periodicBudgets = ref.watch(periodicBudgetsProvider).valueOrNull ?? [];
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-      children: [
-        summary.when(
-          data: (s) => _header(context, s, str),
-          loading: () => const SizedBox(height: 120),
-          error: (e, _) => Text('$e'),
-        ),
-        const SizedBox(height: 20),
-        TextField(
-          controller: _q,
-          onSubmitted: (_) => _ask(),
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            hintText: str.chatPlaceholder,
-            prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
-            suffixIcon: _asking
-                ? const Padding(
-                    padding: EdgeInsets.all(14),
-                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                : IconButton(icon: const Icon(Icons.arrow_upward), onPressed: _ask),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: AppColors.border)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: AppColors.border)),
-          ),
-        ),
-        if (_answer != null) ...[
-          const SizedBox(height: 12),
-          if (_answer!.createdReceipt != null)
-            SectionCard(
-              border: AppColors.green,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(str.addedFromChat,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
-                  ),
-                  Text(
-                    formatMoney(_answer!.createdReceipt!.totalCents),
-                    style: figure(size: 18, weight: FontWeight.w800, color: AppColors.green),
-                  ),
-                ]),
-                const SizedBox(height: 10),
-                Text(
-                  '${_answer!.createdReceipt!.store} · ${shortDate(_answer!.createdReceipt!.date)}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                const SizedBox(height: 8),
-                for (final item in _answer!.createdReceipt!.items)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(children: [
-                      Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                      Pill(item.category, bg: AppColors.chip, fg: AppColors.ink),
-                      const SizedBox(width: 8),
-                      Text(formatMoney(item.cents, withCurrency: false), style: figure(size: 14)),
-                    ]),
-                  ),
-                const SizedBox(height: 12),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: AppColors.muted),
-                    icon: const Icon(Icons.undo_rounded, size: 18),
-                    label: Text(str.undo),
-                    onPressed: () => _undoReceipt(_answer!.createdReceipt!),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.green),
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: Text(str.edit),
-                    onPressed: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ReviewScreen(initial: _answer!.createdReceipt!)),
-                      );
-                      if (mounted) setState(() => _answer = null);
-                    },
-                  ),
-                ]),
-              ]),
-            )
-          else if (_answer!.createdIncome != null)
-            SectionCard(
-              border: AppColors.green,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(str.addedIncomeFromChat,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
-                  ),
-                  Text(
-                    '+${formatMoney(_answer!.createdIncome!.cents)}',
-                    style: figure(size: 18, weight: FontWeight.w800, color: AppColors.green),
-                  ),
-                ]),
-                const SizedBox(height: 10),
-                Text(
-                  '${_answer!.createdIncome!.title} · ${shortDate(_answer!.createdIncome!.date, isEnglish: str.isEnglish)}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Pill(str.categoryName(_answer!.createdIncome!.category), bg: AppColors.greenSoft, fg: AppColors.green),
-                  if (_answer!.createdIncome!.note != null) ...[
-                    const SizedBox(width: 8),
-                    Text(_answer!.createdIncome!.note!, style: TextStyle(color: AppColors.muted)),
-                  ],
-                ]),
-                const SizedBox(height: 12),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: AppColors.muted),
-                    icon: const Icon(Icons.undo_rounded, size: 18),
-                    label: Text(str.undo),
-                    onPressed: () => _undoIncome(_answer!.createdIncome!),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.green),
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: Text(str.edit),
-                    onPressed: () async {
-                      await showIncomeDialog(context, initial: _answer!.createdIncome!);
-                      if (mounted) setState(() => _answer = null);
-                    },
-                  ),
-                ]),
-              ]),
-            )
-          else
-            SectionCard(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_answer!.text, style: const TextStyle(fontSize: 16, height: 1.4)),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  if (_answer!.sourceCount > 0)
-                    Pill('${str.source}: ${str.itemsCount(_answer!.sourceCount)}'),
-                  _answer!.engine == 'lokalnie'
-                      ? Pill(str.calculatedLocally, bg: AppColors.greenSoft, fg: AppColors.green)
-                      : Pill('${str.isEnglish ? 'Model' : 'Model'}: ${_answer!.engine}', bg: AppColors.blueSoft, fg: AppColors.blue),
-                ]),
-                if (_answer!.hits.length > 1)
-                  Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      childrenPadding: EdgeInsets.zero,
-                      title:
-                          Text(str.showItems, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
-                      children: [
-                        for (final h in _answer!.hits.take(15))
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            child: Row(children: [
-                              SizedBox(
-                                  width: 54, child: Text(shortDate(h.doc.date, isEnglish: str.isEnglish), style: TextStyle(color: AppColors.muted))),
-                              Expanded(
-                                child: Text(h.doc.name == h.doc.store ? h.doc.name : '${h.doc.name} · ${h.doc.store}',
-                                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                              ),
-                              Text(formatMoney(h.doc.cents, withCurrency: false), style: figure(size: 14, weight: FontWeight.w500)),
-                            ]),
-                          ),
-                        if (_answer!.hits.length > 15)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text('… ${str.isEnglish ? 'and' : 'i'} ${_answer!.hits.length - 15} ${str.andMore}',
-                                style: TextStyle(color: AppColors.muted)),
-                          ),
-                      ],
-                    ),
-                  ),
-              ]),
-            ),
-        ],
-        const SizedBox(height: 20),
-        summary.maybeWhen(data: (s) => _budgets(context, s, periodicBudgets), orElse: () => const SizedBox()),
-        const SizedBox(height: 20),
-        SectionCard(
-          padding: EdgeInsets.zero,
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            leading: Icon(Icons.bar_chart_rounded, color: AppColors.green),
-            title: Text(str.analytics, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-            subtitle: Text(str.analyticsSub),
-            trailing: Icon(Icons.chevron_right, color: AppColors.muted),
-            onTap: () => context.push('/analytics'),
-          ),
-        ),
-        const SizedBox(height: 20),
-        SectionCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(str.recentReceipts, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              TextButton(onPressed: () => context.go('/receipts'), child: Text(str.all)),
-            ]),
-            receipts.maybeWhen(
-              data: (list) => list.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Text(str.noReceipts,
-                          style: TextStyle(color: AppColors.muted)))
-                  : Column(children: [
-                      for (final r in list.take(3))
-                        ReceiptTile(r,
-                            onTap: () => Navigator.of(context)
-                                .push(MaterialPageRoute(builder: (_) => ReviewScreen(initial: r)))),
-                    ]),
-              orElse: () => const SizedBox(),
-            ),
-          ]),
-        ),
-      ],
-    );
-  }
-
-  Widget _header(BuildContext context, MonthSummary s, AppStrings str) {
-    final frac = s.budgetTotal == 0 ? 0.0 : s.spent / s.budgetTotal;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Eyebrow('${monthLabel(s.month, isEnglish: str.isEnglish)} · ${str.spent}'),
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.green,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            ),
-            onPressed: () => showIncomeDialog(context),
-            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-            label: Text(str.addIncome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          ),
-        ],
-      ),
-      const SizedBox(height: 4),
-      Text(formatMoney(s.spent), style: figure(size: 40)),
-      const SizedBox(height: 12),
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(str.incomes,
-                      style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text('+${formatMoney(s.income)}',
-                      style: figure(size: 15, weight: FontWeight.w700, color: AppColors.green)),
-                ],
-              ),
-            ),
-            Container(width: 1, height: 32, color: AppColors.border),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(str.balance,
-                      style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${s.balance >= 0 ? '+' : ''}${formatMoney(s.balance)}',
-                    style: figure(
-                      size: 15,
-                      weight: FontWeight.w700,
-                      color: s.balance >= 0 ? AppColors.green : AppColors.amberInk,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      if (s.budgetTotal > 0) ...[
-        const SizedBox(height: 12),
-        ProgressBar(frac, color: frac > 1 ? AppColors.amber : AppColors.green),
-        const SizedBox(height: 6),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('${str.budget} ${formatMoney(s.budgetTotal)}', style: TextStyle(color: AppColors.muted)),
-          Text(s.remaining >= 0 ? '${str.remaining} ${formatMoney(s.remaining)}' : '${str.overBudget} ${formatMoney(-s.remaining)}',
-              style: figure(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
-        ]),
-      ],
-    ]);
-  }
-
-  Widget _budgets(BuildContext context, MonthSummary s, List<PeriodicBudget> periodicBudgets) {
-    final str = ref.watch(appStringsProvider);
-    final hasCategoryBudgets = s.budgets.isNotEmpty;
-    final hasPeriodicBudgets = periodicBudgets.isNotEmpty;
-    final isEmpty = !hasCategoryBudgets && !hasPeriodicBudgets;
-
-    return SectionCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(str.budgets, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          Wrap(spacing: 4, children: [
-            TextButton.icon(
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(str.addBudget),
-              onPressed: () => showPeriodicBudgetDialog(context),
-            ),
-            TextButton(
-              onPressed: () => _editBudgets(context, s),
-              child: Text(str.categoryBudgets),
-            ),
-          ]),
-        ]),
-        if (isEmpty) ...[
-          const SizedBox(height: 8),
-          Text(str.budgetsHint, style: TextStyle(color: AppColors.muted)),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.green,
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.weekend_rounded, size: 18, color: Colors.white),
-              label: Text(
-                '${str.thisWeekend} (${str.addBudget})',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-              ),
-              onPressed: () => showPeriodicBudgetDialog(context),
-            ),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.tune_rounded, size: 18),
-              label: Text(str.categoryBudgets),
-              onPressed: () => _editBudgets(context, s),
-            ),
-          ]),
-        ],
-        if (hasPeriodicBudgets) ...[
-          const SizedBox(height: 8),
-          Text(str.tripAndPeriodBudgets,
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
-          for (final pb in periodicBudgets) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.chip.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: pb.isOverBudget
-                      ? Colors.red.withValues(alpha: 0.4)
-                      : (pb.fraction >= 0.8 ? AppColors.amber.withValues(alpha: 0.4) : AppColors.border),
-                ),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(
-                      pb.name,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  if (pb.isUpcoming)
-                    Pill(str.budgetUpcoming, bg: AppColors.blueSoft, fg: AppColors.blue)
-                  else if (pb.isPast)
-                    Pill(str.budgetFinished, bg: AppColors.track, fg: AppColors.muted)
-                  else
-                    Pill(
-                      '${str.budgetActive} · ${pb.daysRemaining == 0 ? (str.isEnglish ? "Last day" : "Dziś koniec") : "${pb.daysRemaining}d"}',
-                      bg: AppColors.greenSoft,
-                      fg: AppColors.green,
-                    ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
-                    tooltip: str.editBudget,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    padding: EdgeInsets.zero,
-                    onPressed: () => showPeriodicBudgetDialog(context, initial: pb),
-                  ),
-                ]),
-                const SizedBox(height: 4),
-                Row(children: [
-                  Text(
-                    '${shortDate(pb.startDate, isEnglish: str.isEnglish)} – ${shortDate(pb.endDate, isEnglish: str.isEnglish)}',
-                    style: TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                  if (pb.isRecurring) ...[
-                    const SizedBox(width: 6),
-                    Pill(str.recurringWeekly, bg: AppColors.chip, fg: AppColors.muted),
-                  ],
-                  const SizedBox(width: 6),
-                  Pill(
-                    pb.category != null ? str.categoryName(pb.category!) : str.allExpenses,
-                    bg: AppColors.chip,
-                    fg: AppColors.ink,
-                  ),
-                ]),
-                const SizedBox(height: 8),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text(
-                    '${formatMoney(pb.spentCents, withCurrency: false)} / ${formatMoney(pb.limitCents)} · ${(pb.fraction * 100).round()}%',
-                    style: figure(
-                      size: 13,
-                      weight: pb.isOverBudget ? FontWeight.w700 : FontWeight.w500,
-                      color: pb.isOverBudget ? Colors.red : (pb.fraction >= 0.8 ? AppColors.amberInk : AppColors.muted),
-                    ),
-                  ),
-                  Text(
-                    pb.isOverBudget
-                        ? '${str.overBudget} ${formatMoney(pb.spentCents - pb.limitCents)}'
-                        : '${str.remaining} ${formatMoney(pb.remainingCents)}',
-                    style: figure(
-                      size: 12,
-                      weight: FontWeight.w600,
-                      color: pb.isOverBudget ? Colors.red : AppColors.muted,
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 6),
-                ProgressBar(
-                  pb.fraction,
-                  color: pb.isOverBudget
-                      ? Colors.red
-                      : (pb.fraction >= 0.8 ? AppColors.amber : AppColors.green),
-                ),
-              ]),
-            ),
-          ],
-        ],
-        if (hasCategoryBudgets) ...[
-          const SizedBox(height: 14),
-          if (hasPeriodicBudgets) ...[
-            Text(str.categoryBudgets,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
-            const SizedBox(height: 4),
-          ],
-          for (final b in s.budgets) ...[
-            const SizedBox(height: 10),
-            Builder(builder: (_) {
-              final spent = s.byCategory[b.category] ?? 0;
-              final f = spent / b.limitCents;
-              final warn = f >= 0.8;
-              final color = warn ? AppColors.amber : AppColors.green;
-              return Column(children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text(str.categoryName(b.category), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                  Text('${formatMoney(spent, withCurrency: false)} / ${formatMoney(b.limitCents)} · ${(f * 100).round()}%',
-                      style: figure(
-                          size: 13,
-                          weight: warn ? FontWeight.w700 : FontWeight.w400,
-                          color: warn ? AppColors.amberInk : AppColors.muted)),
-                ]),
-                const SizedBox(height: 6),
-                ProgressBar(f, color: color),
-              ]);
-            }),
-          ],
-        ],
-      ]),
-    );
-  }
-
-  Future<void> _editBudgets(BuildContext context, MonthSummary s) async {
-    final str = ref.read(appStringsProvider);
-    final ctrls = {
-      for (final c in defaultCategories)
-        c: TextEditingController(
-            text: s.budgets.where((b) => b.category == c).map((b) => (b.limitCents / 100).round().toString()).firstOrNull ?? '')
-    };
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(str.monthlyBudgets),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            for (final e in ctrls.entries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: TextField(
-                  controller: e.value,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: str.categoryName(e.key),
-                    suffixText: 'zł',
-                    hintText: str.noLimit,
-                  ),
-                ),
-              ),
-          ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(str.cancel)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(str.save)),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    final db = ref.read(dbProvider);
-    for (final e in ctrls.entries) {
-      final v = int.tryParse(e.value.text.trim());
-      await db.setBudget(e.key, v == null ? null : v * 100);
-    }
-    ref.read(dataVersionProvider.notifier).bump();
-  }
-}
-
-class ReceiptTile extends ConsumerWidget {
-  const ReceiptTile(this.r, {super.key, this.onTap, this.onLongPress});
-  final Receipt r;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final str = ref.watch(appStringsProvider);
-    final when = str.relativeDate(r.date);
+    final summary = ref.watch(monthSummaryProvider).valueOrNull;
+    final receipts = ref.watch(receiptsProvider).valueOrNull ?? const <Receipt>[];
+    final subs = ref.watch(subscriptionsProvider).valueOrNull ?? const <Subscription>[];
+    final bottom = 84 + MediaQuery.of(context).padding.bottom + 40;
+    final upcoming = [...subs.where((s) => s.active)]..sort((a, b) => a.nextDate.compareTo(b.nextDate));
+    return ListView(padding: EdgeInsets.only(bottom: bottom), children: [
+      if (summary == null) const SizedBox(height: 280) else _hero(context, summary, str),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen())),
+            child: Container(
+              height: 56,
+              padding: const EdgeInsets.fromLTRB(16, 0, 6, 0),
+              decoration: BoxDecoration(color: AppColors.field, borderRadius: BorderRadius.circular(16)),
+              child: Row(children: [
+                Expanded(child: Text(str.chatPlaceholder, maxLines: 1, overflow: TextOverflow.ellipsis, style: fig(16, color: AppColors.text2))),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Icons.arrow_upward, color: AppColors.onAccent),
+                ),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (summary != null) ..._budgets(context, summary, str),
+          const SizedBox(height: 8),
+          NavRow(
+            topLine: summary != null && summary.budgets.isNotEmpty ? true : false,
+            minHeight: 72,
+            bold: true,
+            leading: Icon(Icons.bar_chart_rounded, color: AppColors.accent, size: 26),
+            title: str.analytics,
+            subtitle: str.analyticsSub,
+            onTap: () => context.push('/analytics'),
+          ),
+          if (upcoming.isNotEmpty)
+            NavRow(
+              minHeight: 72,
+              bold: true,
+              bottomLine: true,
+              leading: Icon(Icons.repeat, color: AppColors.accent, size: 26),
+              title: str.isEnglish ? 'Next subscription' : 'Najbliższa subskrypcja',
+              subtitle: '${upcoming.first.name}, ${formatMoney(upcoming.first.cents)}, ${str.inDays(upcoming.first.nextDate.difference(DateTime.now()).inDays.clamp(0, 9999))}',
+              onTap: () => context.go('/subscriptions'),
+            ),
+          const SizedBox(height: 20),
+          SectionHeader(str.recentReceipts, action: str.all, onAction: () => context.go('/receipts')),
+          if (receipts.isEmpty)
+            Padding(padding: const EdgeInsets.only(top: 8), child: Text(str.noReceipts, style: fig(16, color: AppColors.text3, height: 24 / 16)))
+          else
+            for (var i = 0; i < receipts.take(3).length; i++)
+              ReceiptTile(receipts[i],
+                  bottomLine: i == receipts.take(3).length - 1,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReviewScreen(initial: receipts[i])))),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _hero(BuildContext context, MonthSummary s, AppStrings str) {
+    final frac = s.budgetTotal == 0 ? 0.0 : s.spent / s.budgetTotal;
+    final warn = frac >= 0.8;
+    return HeroZone(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          height: 52,
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(monthLabel(s.month, isEnglish: str.isEnglish), style: fig(15, color: AppColors.text3)),
+            Transform.translate(
+              offset: const Offset(8, 0),
+              child: TextButton(onPressed: () => showIncomeDialog(context), child: Text(str.addIncome, style: fig(15, weight: 600, color: AppColors.accent))),
+            ),
+          ]),
+        ),
+        MoneyText(s.spent),
+        const SizedBox(height: 4),
+        Text(str.isEnglish ? 'spent this month' : 'wydane w tym miesiącu', style: fig(17, weight: 600)),
+        if (s.budgetTotal > 0) ...[
+          const SizedBox(height: 16),
+          ProgressBar(frac, height: 12, color: warn ? AppColors.warnBar : AppColors.accent, track: warn ? AppColors.warnTrack : null),
+          const SizedBox(height: 8),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('${str.budget} ${formatMoney(s.budgetTotal)}', style: fig(14, color: AppColors.text3)),
+            Text(
+              s.remaining >= 0 ? '${str.remaining} ${formatMoney(s.remaining)}' : '${str.overBudget} ${formatMoney(-s.remaining)}',
+              style: fig(14, weight: 700, color: s.remaining >= 0 ? AppColors.text : AppColors.warn),
+            ),
+          ]),
+        ],
+        const SizedBox(height: 16),
+        Row(children: [
+          _stat(str.incomes, '+${formatMoney(s.income)}', AppColors.income),
+          const SizedBox(width: 24),
+          _stat(str.balance, '${s.balance >= 0 ? '+' : ''}${formatMoney(s.balance)}', s.balance >= 0 ? AppColors.income : AppColors.warn),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _stat(String label, String value, Color color) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: fig(14, color: AppColors.text3)),
+        Text(value, style: fig(18, weight: 700, color: color)),
+      ]);
+
+  /// Category budgets as flat rows. Period budgets and editing live in [BudgetsScreen].
+  List<Widget> _budgets(BuildContext context, MonthSummary s, AppStrings str) {
+    return [
+      SectionHeader(str.budgets, action: str.all, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BudgetsScreen()))),
+      if (s.budgets.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Text(str.budgetsHint, style: fig(15, color: AppColors.text3, height: 22 / 15)),
+        )
+      else
+        for (var i = 0; i < s.budgets.length; i++)
+          BudgetRow(
+            name: str.categoryName(s.budgets[i].category),
+            spent: s.byCategory[s.budgets[i].category] ?? 0,
+            limit: s.budgets[i].limitCents,
+            first: i == 0,
+          ),
+    ];
+  }
+}
+
+/// One receipt as a flat list row (no store initial tile).
+class ReceiptTile extends ConsumerWidget {
+  const ReceiptTile(this.r, {super.key, this.onTap, this.onLongPress, this.bottomLine = false});
+  final Receipt r;
+  final VoidCallback? onTap, onLongPress;
+  final bool bottomLine;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final str = ref.watch(appStringsProvider);
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+        constraints: const BoxConstraints(minHeight: 68),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line), bottom: bottomLine ? BorderSide(color: AppColors.line) : BorderSide.none)),
         child: Row(children: [
-          Initial(r.store, green: when == 'dziś' || when == 'today'),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(r.store, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              Text('$when · ${str.itemsCount(r.items.length)} · ${str.categoryName(r.mainCategory)}',
-                  style: TextStyle(color: AppColors.muted)),
+              Text(r.store, maxLines: 1, overflow: TextOverflow.ellipsis, style: fig(17, weight: 700)),
+              Text('${str.relativeDate(r.date)}, ${str.itemsCount(r.items.length)}, ${str.categoryName(r.mainCategory)}', style: fig(14, color: AppColors.text2)),
             ]),
           ),
-          Text(formatMoney(r.totalCents), style: figure(size: 16)),
+          const SizedBox(width: 12),
+          Text(formatMoney(r.totalCents), style: fig(17, weight: 700)),
         ]),
       ),
     );
