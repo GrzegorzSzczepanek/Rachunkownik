@@ -12,6 +12,7 @@ import '../core/localization.dart';
 import '../core/theme.dart';
 import '../providers.dart';
 import '../notifications/notification_sync.dart';
+import 'budgets_screen.dart';
 import 'data_actions.dart';
 import 'widgets.dart';
 
@@ -30,16 +31,28 @@ class SettingsScreen extends ConsumerWidget {
     final apiTasks = AiTask.values.where((t) => s.engineFor(t) == AiEngine.api).toList();
     final provider = s.api.providerLabel;
 
+    final budgetTotal = ref.watch(monthSummaryProvider).valueOrNull?.budgetTotal ?? 0;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      padding: EdgeInsets.only(bottom: 84 + MediaQuery.of(context).padding.bottom + 40),
       children: [
-        Text(str.tabSettings, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        Text(
-          str.settingsSubtitle,
-          style: TextStyle(color: AppColors.muted, fontSize: 16),
+        HeroZone(
+          bottom: 20,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(height: 52, child: Align(alignment: Alignment.centerLeft, child: Text(str.tabSettings, style: display(32)))),
+            const SizedBox(height: 4),
+            Text(str.isEnglish ? 'Monthly budget' : 'Miesięczny budżet', style: fig(16, weight: 600)),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Flexible(child: budgetTotal > 0 ? MoneyText(budgetTotal, size: 56, unitSize: 24) : Text(str.noLimit, style: display(32))),
+              TextButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BudgetsScreen())),
+                child: Text(str.isEnglish ? 'Change' : 'Zmień', style: fig(15, weight: 600, color: AppColors.accent)),
+              ),
+            ]),
+          ]),
         ),
-        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const _LanguageCard(),
         const SizedBox(height: 16),
         const _SecurityCard(),
@@ -50,29 +63,24 @@ class SettingsScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: Column(children: [
             _link(str.backupJson, '', () => exportBackupJson(context, ref), icon: Icons.backup_outlined),
-            const Divider(),
+            Divider(color: AppColors.line),
             _link(str.restoreJson, '', () => restoreBackupJson(context, ref), icon: Icons.settings_backup_restore_outlined),
-            const Divider(),
+            Divider(color: AppColors.line),
             _link(str.exportCsv, '', () => exportCsv(context, ref), icon: Icons.download_outlined),
-            const Divider(),
+            Divider(color: AppColors.line),
             _link(str.bankImportCsv, '', () => context.push('/import'), icon: Icons.upload_file_outlined),
-            const Divider(),
+            Divider(color: AppColors.line),
             _link(str.analytics, '', () => context.push('/analytics'), icon: Icons.bar_chart_outlined),
           ]),
         ),
         const SizedBox(height: 24),
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            str.aiSection,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(str.aiSection, style: display(22)),
         ),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-              color: apiTasks.isEmpty ? AppColors.greenSoft : AppColors.blueSoft,
-              borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: AppColors.hero, borderRadius: BorderRadius.circular(16)),
           child: Text(
             apiTasks.isEmpty
                 ? str.aiAllLocal
@@ -89,7 +97,7 @@ class SettingsScreen extends ConsumerWidget {
                           AiTask.embeddings => 'treść pozycji',
                           AiTask.chat => 'treść pytania i dopasowane pozycje',
                         }).join(', ')}.'),
-            style: TextStyle(color: apiTasks.isEmpty ? AppColors.green : AppColors.blue, height: 1.4),
+            style: fig(15, color: AppColors.accentDeep, height: 22 / 15),
           ),
         ),
         const SizedBox(height: 12),
@@ -98,7 +106,7 @@ class SettingsScreen extends ConsumerWidget {
           child: Column(children: [
             _link(str.apiProvider, '$provider${s.api.model.isEmpty ? '' : ' · ${s.api.model}'}',
                 () => context.go('/settings/api'), icon: Icons.cloud_outlined),
-            const Divider(),
+            Divider(color: AppColors.line),
             _link(str.localModels, _gb(installed), () => context.go('/settings/models'), icon: Icons.memory_outlined),
           ]),
         ),
@@ -115,7 +123,7 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: Text(str.enginesPerTaskSub, style: TextStyle(fontSize: 13, color: AppColors.muted)),
               children: [
                 for (final t in AiTask.values) ...[
-                  const Divider(),
+                  Divider(color: AppColors.line),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -155,17 +163,17 @@ class SettingsScreen extends ConsumerWidget {
             _toggle(str.privacyMaskTitle,
                 str.privacyMaskSub,
                 s.privacy.maskPersonalData, (v) => ctrl.setPrivacy(s.privacy.copyWith(mask: v))),
-            const Divider(),
+            Divider(color: AppColors.line),
             _toggle(str.privacyConsentTitle,
                 str.isEnglish
                     ? 'With provider name: “Receipt photo will be sent to $provider”.'
                     : 'Z nazwą dostawcy: „Zdjęcie paragonu zostanie wysłane do $provider”.',
                 s.privacy.askBeforeSendingImage, (v) => ctrl.setPrivacy(s.privacy.copyWith(ask: v))),
-            const Divider(),
+            Divider(color: AppColors.line),
             _toggle(str.privacyRetryTitle,
                 str.privacyRetrySub,
                 s.privacy.suggestApiRetry, (v) => ctrl.setPrivacy(s.privacy.copyWith(retry: v))),
-            const Divider(),
+            Divider(color: AppColors.line),
             _toggle(str.privacyTokensTitle,
                 str.isEnglish
                     ? 'This month: ${s.monthlyTokens} tokens via API.'
@@ -175,31 +183,48 @@ class SettingsScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         const _AboutCard(),
+          ]),
+        ),
       ],
     );
   }
 
   static String _gb(int bytes) => '${(bytes / 1e9).toStringAsFixed(1).replaceAll('.', ',')} GB';
 
-  Widget _link(String title, String trailing, VoidCallback onTap, {IconData? icon}) => ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        leading: icon != null ? Icon(icon, color: AppColors.green, size: 22) : null,
-        title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+  Widget _link(String title, String trailing, VoidCallback onTap, {IconData? icon}) => NavRow(
+        minHeight: 56,
+        topLine: false,
+        leading: icon != null ? Icon(icon, color: AppColors.accent, size: 22) : null,
+        title: title,
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (trailing.isNotEmpty) Text(trailing, style: TextStyle(color: AppColors.muted)),
-          Icon(Icons.chevron_right, color: AppColors.muted),
+          if (trailing.isNotEmpty) Text(trailing, style: fig(14, color: AppColors.text2)),
+          Icon(Icons.chevron_right, color: AppColors.text2),
         ]),
         onTap: onTap,
       );
 
-  Widget _toggle(String title, String sub, bool v, ValueChanged<bool> on) => SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(sub),
-        value: v,
-        activeThumbColor: Colors.white,
-        activeTrackColor: AppColors.green,
-        onChanged: on,
+  Widget _toggle(String title, String sub, bool v, ValueChanged<bool> on) => _SwitchRow(title: title, sub: sub, value: v, onChanged: on);
+}
+
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({required this.title, required this.sub, required this.value, required this.onChanged});
+  final String title, sub;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: fig(16, weight: 600)),
+              Text(sub, style: fig(14, color: AppColors.text2, height: 20 / 14)),
+            ]),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ]),
       );
 }
 
@@ -260,17 +285,9 @@ class _NotificationsCardState extends ConsumerState<_NotificationsCard> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(str.notifications, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          child: Text(str.notifications, style: display(22)),
         ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(str.notifSubsTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(str.notifSubsSub),
-          value: _subs,
-          activeThumbColor: Colors.white,
-          activeTrackColor: AppColors.green,
-          onChanged: (v) => _set(subs: v),
-        ),
+        _SwitchRow(title: str.notifSubsTitle, sub: str.notifSubsSub, value: _subs, onChanged: (v) => _set(subs: v)),
         if (_subs)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -286,16 +303,8 @@ class _NotificationsCardState extends ConsumerState<_NotificationsCard> {
               onChanged: (v) => v == null ? null : _set(days: v),
             ),
           ),
-        const Divider(),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(str.notifBudgetTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(str.notifBudgetSub),
-          value: _budget,
-          activeThumbColor: Colors.white,
-          activeTrackColor: AppColors.green,
-          onChanged: (v) => _set(budget: v),
-        ),
+        Divider(color: AppColors.line),
+        _SwitchRow(title: str.notifBudgetTitle, sub: str.notifBudgetSub, value: _budget, onChanged: (v) => _set(budget: v)),
       ]),
     );
   }
@@ -315,7 +324,7 @@ class _SecurityCard extends ConsumerWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(str.security, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          child: Text(str.security, style: display(22)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -387,7 +396,7 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
               : Icon(Icons.refresh_rounded, color: AppColors.green),
           onTap: _checking ? null : _check,
         ),
-        const Divider(),
+        Divider(color: AppColors.line),
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           title: Text(str.github, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),

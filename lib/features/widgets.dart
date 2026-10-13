@@ -92,30 +92,30 @@ class EngineToggle extends StatelessWidget {
   });
   final bool api;
   final ValueChanged<bool> onChanged;
-  final String localLabel;
-  final String apiLabel;
+  final String localLabel, apiLabel;
 
   @override
   Widget build(BuildContext context) {
-    Widget seg(String label, bool selected, Color color, VoidCallback onTap) => GestureDetector(
+    Widget seg(String label, bool selected, VoidCallback onTap) => GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-                color: selected ? color : Colors.transparent,
-                borderRadius: BorderRadius.circular(10)),
-            child: Text(label,
-                style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : AppColors.muted)),
+              color: selected ? AppColors.bg : Colors.transparent,
+              borderRadius: BorderRadius.circular(11),
+              boxShadow: selected ? [BoxShadow(color: const Color(0xFF17201C).withValues(alpha: 0.18), blurRadius: 2, offset: const Offset(0, 1))] : null,
+            ),
+            child: Text(label, style: fig(15, weight: selected ? 700 : 600, color: selected ? AppColors.text : AppColors.text3)),
           ),
         );
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: AppColors.chip, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: AppColors.field, borderRadius: BorderRadius.circular(14)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        seg(localLabel, !api, AppColors.green, () => onChanged(false)),
-        seg(apiLabel, api, AppColors.blue, () => onChanged(true)),
+        seg(localLabel, !api, () => onChanged(false)),
+        seg(apiLabel, api, () => onChanged(true)),
       ]),
     );
   }
