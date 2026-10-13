@@ -51,12 +51,12 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
                 Flexible(
                   child: Text(device.name,
                       overflow: TextOverflow.ellipsis,
-                      style: mono(size: 13, weight: FontWeight.w400, color: AppColors.muted)),
+                      style: figure(size: 13, weight: FontWeight.w400, color: AppColors.muted)),
                 ),
               ]),
               const SizedBox(height: 8),
               if (!deviceLoaded)
-                Text(str.isEnglish ? 'Checking parameters…' : 'Sprawdzam parametry…', style: const TextStyle(color: AppColors.muted))
+                Text(str.isEnglish ? 'Checking parameters…' : 'Sprawdzam parametry…', style: TextStyle(color: AppColors.muted))
               else ...[
                 _spec('RAM', device.totalRamBytes == null ? (str.isEnglish ? 'unknown' : 'nieznany') : _gb(device.totalRamBytes!),
                     device.totalRamBytes == null
@@ -101,7 +101,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
                     : '⚠ Modele powyżej 1 GB zużywają dużo baterii i RAM. Aplikacja zwalnia model z pamięci, gdy trafi w tło.\n\n'
                       'Werdykty „pójdzie / na styk” to szacunek z RAM i rozmiaru modelu, nie pomiar. '
                       'Pierwszy odczyt po wczytaniu modelu trwa dłużej.',
-                style: const TextStyle(color: AppColors.amberInk, height: 1.4)),
+                style: TextStyle(color: AppColors.amberInk, height: 1.4)),
           ),
         ],
       ),
@@ -111,11 +111,11 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
   Widget _spec(String k, String v, String? note) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(children: [
-          SizedBox(width: 120, child: Text(k, style: const TextStyle(color: AppColors.muted))),
-          Text(v, style: mono(size: 14)),
+          SizedBox(width: 120, child: Text(k, style: TextStyle(color: AppColors.muted))),
+          Text(v, style: figure(size: 14)),
           if (note != null) ...[
             const SizedBox(width: 10),
-            Expanded(child: Text(note, style: const TextStyle(color: AppColors.muted, fontSize: 13))),
+            Expanded(child: Text(note, style: TextStyle(color: AppColors.muted, fontSize: 13))),
           ],
         ]),
       );
@@ -209,7 +209,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
                   Pill(str.isEnglish ? 'Recommended' : 'Polecany', bg: AppColors.ink, fg: Colors.white),
               ]),
               const SizedBox(height: 4),
-              Text('${m.description} · ~${_gb(m.totalBytes)}', style: const TextStyle(color: AppColors.muted)),
+              Text('${m.description} · ~${_gb(m.totalBytes)}', style: TextStyle(color: AppColors.muted)),
             ]),
           ),
           const SizedBox(width: 12),
@@ -221,9 +221,9 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
           const SizedBox(height: 4),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('${(frac * 100).round()}% · ${_gb(s.received)} ${str.isEnglish ? "of" : "z"} ${_gb(m.totalBytes)}',
-                style: mono(size: 12, weight: FontWeight.w400, color: AppColors.muted)),
+                style: figure(size: 12, weight: FontWeight.w400, color: AppColors.muted)),
             Text(s.state == ModelState.paused ? (str.isEnglish ? 'paused' : 'wstrzymano') : eta,
-                style: mono(size: 12, weight: FontWeight.w400, color: AppColors.muted)),
+                style: figure(size: 12, weight: FontWeight.w400, color: AppColors.muted)),
           ]),
         ],
         if (s.state == ModelState.installed && !isActive)
@@ -241,7 +241,7 @@ class _LocalModelsState extends ConsumerState<LocalModelsScreen> {
             padding: const EdgeInsets.only(top: 8),
             child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(s.error!, style: const TextStyle(color: AppColors.amberInk))),
+                child: Text(s.error!, style: TextStyle(color: AppColors.amberInk))),
           ),
       ]),
     );

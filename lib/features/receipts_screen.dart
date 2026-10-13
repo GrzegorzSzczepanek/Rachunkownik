@@ -80,7 +80,7 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
                         child: Text(
                           str.noReceiptsCamera,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppColors.muted),
+                          style: TextStyle(color: AppColors.muted),
                         ),
                       ),
                     ),
@@ -125,7 +125,7 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                       child: Column(
                         children: [
-                          const Icon(Icons.account_balance_wallet_outlined, size: 48, color: AppColors.muted),
+                          Icon(Icons.account_balance_wallet_outlined, size: 48, color: AppColors.muted),
                           const SizedBox(height: 12),
                           Text(
                             str.noIncomesTitle,
@@ -135,7 +135,7 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
                           Text(
                             str.noIncomesDesc,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: AppColors.muted),
+                            style: TextStyle(color: AppColors.muted),
                           ),
                           const SizedBox(height: 16),
                           FilledButton.icon(

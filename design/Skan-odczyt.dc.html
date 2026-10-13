@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Rachunkownik, Odczyt paragonu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+</style>
+</helmet>
+<div style="position:relative;width:390px;height:844px;overflow:hidden;background:#FFFFFF;font-family:'Figtree',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#17201C;box-sizing:border-box">
+  <div style="background:#E3EDE8;border-radius:0 0 32px 32px;padding:44px 20px 28px">
+    <div style="height:52px;display:flex;align-items:center;font-size:15px;color:#3A463F">Odczyt na telefonie</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:72px;line-height:72px;letter-spacing:-0.02em">0:24</div>
+    <div style="margin-top:4px;font-size:17px;font-weight:600">Czytam paragon, zwykle 20 do 40 s</div>
+    <div style="margin-top:16px;height:12px;border-radius:6px;background:#C5D9CF"><div style="width:58%;height:12px;border-radius:6px;background:#1F5F4A"></div></div>
+  </div>
+  <div style="padding:24px 20px 0">
+    <div style="display:flex;gap:16px;align-items:center">
+      <div style="width:96px;height:128px;border-radius:8px;background:#EEF2EF;padding:12px;box-sizing:border-box"><div style="height:6px;width:60%;border-radius:3px;background:#CBD3CE"></div><div style="margin-top:8px;height:6px;border-radius:3px;background:#CBD3CE"></div><div style="margin-top:8px;height:6px;width:80%;border-radius:3px;background:#CBD3CE"></div><div style="margin-top:8px;height:6px;border-radius:3px;background:#CBD3CE"></div><div style="margin-top:8px;height:6px;width:70%;border-radius:3px;background:#CBD3CE"></div><div style="margin-top:14px;height:8px;width:50%;border-radius:3px;background:#B3C0B9"></div></div>
+      <div style="flex:1;font-size:16px;line-height:24px;color:#3A463F">Zdjęcie zostaje na twoim telefonie. Możesz zamknąć ekran, odczyt się nie przerwie.</div>
+    </div>
+    <div style="margin-top:28px;font-size:16px;font-weight:700">Za wolno?</div>
+    <a href="Skan-korekta.dc.html" style="margin-top:10px;min-height:64px;border-radius:16px;border:1px solid #CBD3CE;display:flex;align-items:center;gap:12px;padding:0 16px;text-decoration:none"><div style="flex:1"><div style="font-size:16px;font-weight:700">Przełącz na API</div><div style="font-size:14px;color:#566059">Zwykle kilka sekund, zdjęcie wysyłane do dostawcy</div></div></a>
+  </div>
+  <div style="position:absolute;left:24px;right:24px;bottom:32px"><a href="Main.dc.html" style="min-height:56px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px;font-weight:600;color:#17201C">Anuluj odczyt</a></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

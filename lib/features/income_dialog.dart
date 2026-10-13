@@ -181,7 +181,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
                     color: AppColors.greenSoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.trending_up_rounded, color: AppColors.green, size: 28),
+                  child: Icon(Icons.trending_up_rounded, color: AppColors.green, size: 28),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -202,11 +202,11 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
               controller: _amount,
               autofocus: !isEdit,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: mono(size: 28, weight: FontWeight.w800),
+              style: figure(size: 28, weight: FontWeight.w800),
               decoration: InputDecoration(
                 labelText: str.incomeAmount,
                 suffixText: 'zł',
-                suffixStyle: mono(size: 22, weight: FontWeight.w700),
+                suffixStyle: figure(size: 22, weight: FontWeight.w700),
                 hintText: '0,00',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
               ),
@@ -225,7 +225,7 @@ class _IncomeSheetState extends ConsumerState<_IncomeSheet> {
               str.isEnglish
                   ? 'Income category (choose or matched automatically):'
                   : 'Kategoria dochodu (wybierz lub dopasuje się automatycznie):',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -332,7 +332,7 @@ class IncomeTile extends ConsumerWidget {
       onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
         child: Row(children: [
           Container(
             width: 44,
@@ -349,15 +349,15 @@ class IncomeTile extends ConsumerWidget {
               Text(inc.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Row(children: [
-                Text(when, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-                const Text(' · ', style: TextStyle(color: AppColors.muted)),
+                Text(when, style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                Text(' · ', style: TextStyle(color: AppColors.muted)),
                 Text(str.categoryName(inc.category),
-                    style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w600, fontSize: 13)),
+                    style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w600, fontSize: 13)),
               ]),
             ]),
           ),
           Text('+${formatMoney(inc.cents)}',
-              style: mono(size: 16, weight: FontWeight.w700, color: AppColors.green)),
+              style: figure(size: 16, weight: FontWeight.w700, color: AppColors.green)),
         ]),
       ),
     );

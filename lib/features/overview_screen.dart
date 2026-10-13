@@ -115,9 +115,9 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                     child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                 : IconButton(icon: const Icon(Icons.arrow_upward), onPressed: _ask),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: AppColors.border)),
+                borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: AppColors.border)),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: AppColors.border)),
+                borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: AppColors.border)),
           ),
         ),
         if (_answer != null) ...[
@@ -127,15 +127,15 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
               border: AppColors.green,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
+                  Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(str.addedFromChat,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
                   ),
                   Text(
                     formatMoney(_answer!.createdReceipt!.totalCents),
-                    style: mono(size: 18, weight: FontWeight.w800, color: AppColors.green),
+                    style: figure(size: 18, weight: FontWeight.w800, color: AppColors.green),
                   ),
                 ]),
                 const SizedBox(height: 10),
@@ -151,7 +151,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                       Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
                       Pill(item.category, bg: AppColors.chip, fg: AppColors.ink),
                       const SizedBox(width: 8),
-                      Text(formatMoney(item.cents, withCurrency: false), style: mono(size: 14)),
+                      Text(formatMoney(item.cents, withCurrency: false), style: figure(size: 14)),
                     ]),
                   ),
                 const SizedBox(height: 12),
@@ -183,15 +183,15 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
               border: AppColors.green,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
+                  Icon(Icons.check_circle_rounded, color: AppColors.green, size: 24),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(str.addedIncomeFromChat,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.green)),
                   ),
                   Text(
                     '+${formatMoney(_answer!.createdIncome!.cents)}',
-                    style: mono(size: 18, weight: FontWeight.w800, color: AppColors.green),
+                    style: figure(size: 18, weight: FontWeight.w800, color: AppColors.green),
                   ),
                 ]),
                 const SizedBox(height: 10),
@@ -204,7 +204,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                   Pill(str.categoryName(_answer!.createdIncome!.category), bg: AppColors.greenSoft, fg: AppColors.green),
                   if (_answer!.createdIncome!.note != null) ...[
                     const SizedBox(width: 8),
-                    Text(_answer!.createdIncome!.note!, style: const TextStyle(color: AppColors.muted)),
+                    Text(_answer!.createdIncome!.note!, style: TextStyle(color: AppColors.muted)),
                   ],
                 ]),
                 const SizedBox(height: 12),
@@ -247,26 +247,26 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                       tilePadding: EdgeInsets.zero,
                       childrenPadding: EdgeInsets.zero,
                       title:
-                          Text(str.showItems, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
+                          Text(str.showItems, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.green)),
                       children: [
                         for (final h in _answer!.hits.take(15))
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 5),
                             child: Row(children: [
                               SizedBox(
-                                  width: 54, child: Text(shortDate(h.doc.date, isEnglish: str.isEnglish), style: const TextStyle(color: AppColors.muted))),
+                                  width: 54, child: Text(shortDate(h.doc.date, isEnglish: str.isEnglish), style: TextStyle(color: AppColors.muted))),
                               Expanded(
                                 child: Text(h.doc.name == h.doc.store ? h.doc.name : '${h.doc.name} · ${h.doc.store}',
                                     maxLines: 1, overflow: TextOverflow.ellipsis),
                               ),
-                              Text(formatMoney(h.doc.cents, withCurrency: false), style: mono(size: 14, weight: FontWeight.w500)),
+                              Text(formatMoney(h.doc.cents, withCurrency: false), style: figure(size: 14, weight: FontWeight.w500)),
                             ]),
                           ),
                         if (_answer!.hits.length > 15)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text('… ${str.isEnglish ? 'and' : 'i'} ${_answer!.hits.length - 15} ${str.andMore}',
-                                style: const TextStyle(color: AppColors.muted)),
+                                style: TextStyle(color: AppColors.muted)),
                           ),
                       ],
                     ),
@@ -281,10 +281,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
           padding: EdgeInsets.zero,
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            leading: const Icon(Icons.bar_chart_rounded, color: AppColors.green),
+            leading: Icon(Icons.bar_chart_rounded, color: AppColors.green),
             title: Text(str.analytics, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
             subtitle: Text(str.analyticsSub),
-            trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+            trailing: Icon(Icons.chevron_right, color: AppColors.muted),
             onTap: () => context.push('/analytics'),
           ),
         ),
@@ -300,7 +300,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                   ? Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Text(str.noReceipts,
-                          style: const TextStyle(color: AppColors.muted)))
+                          style: TextStyle(color: AppColors.muted)))
                   : Column(children: [
                       for (final r in list.take(3))
                         ReceiptTile(r,
@@ -334,7 +334,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         ],
       ),
       const SizedBox(height: 4),
-      Text(formatMoney(s.spent), style: mono(size: 40)),
+      Text(formatMoney(s.spent), style: figure(size: 40)),
       const SizedBox(height: 12),
       Container(
         padding: const EdgeInsets.all(14),
@@ -350,10 +350,10 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(str.incomes,
-                      style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text('+${formatMoney(s.income)}',
-                      style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
+                      style: figure(size: 15, weight: FontWeight.w700, color: AppColors.green)),
                 ],
               ),
             ),
@@ -364,11 +364,11 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(str.balance,
-                      style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
                     '${s.balance >= 0 ? '+' : ''}${formatMoney(s.balance)}',
-                    style: mono(
+                    style: figure(
                       size: 15,
                       weight: FontWeight.w700,
                       color: s.balance >= 0 ? AppColors.green : AppColors.amberInk,
@@ -385,9 +385,9 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         ProgressBar(frac, color: frac > 1 ? AppColors.amber : AppColors.green),
         const SizedBox(height: 6),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('${str.budget} ${formatMoney(s.budgetTotal)}', style: const TextStyle(color: AppColors.muted)),
+          Text('${str.budget} ${formatMoney(s.budgetTotal)}', style: TextStyle(color: AppColors.muted)),
           Text(s.remaining >= 0 ? '${str.remaining} ${formatMoney(s.remaining)}' : '${str.overBudget} ${formatMoney(-s.remaining)}',
-              style: mono(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
+              style: figure(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
         ]),
       ],
     ]);
@@ -417,7 +417,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         ]),
         if (isEmpty) ...[
           const SizedBox(height: 8),
-          Text(str.budgetsHint, style: const TextStyle(color: AppColors.muted)),
+          Text(str.budgetsHint, style: TextStyle(color: AppColors.muted)),
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
             FilledButton.icon(
@@ -442,7 +442,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
         if (hasPeriodicBudgets) ...[
           const SizedBox(height: 8),
           Text(str.tripAndPeriodBudgets,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
           for (final pb in periodicBudgets) ...[
             const SizedBox(height: 10),
             Container(
@@ -476,7 +476,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                     ),
                   const SizedBox(width: 4),
                   IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
+                    icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
                     tooltip: str.editBudget,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     padding: EdgeInsets.zero,
@@ -487,7 +487,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 Row(children: [
                   Text(
                     '${shortDate(pb.startDate, isEnglish: str.isEnglish)} – ${shortDate(pb.endDate, isEnglish: str.isEnglish)}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                    style: TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                   if (pb.isRecurring) ...[
                     const SizedBox(width: 6),
@@ -504,7 +504,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text(
                     '${formatMoney(pb.spentCents, withCurrency: false)} / ${formatMoney(pb.limitCents)} · ${(pb.fraction * 100).round()}%',
-                    style: mono(
+                    style: figure(
                       size: 13,
                       weight: pb.isOverBudget ? FontWeight.w700 : FontWeight.w500,
                       color: pb.isOverBudget ? Colors.red : (pb.fraction >= 0.8 ? AppColors.amberInk : AppColors.muted),
@@ -514,7 +514,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                     pb.isOverBudget
                         ? '${str.overBudget} ${formatMoney(pb.spentCents - pb.limitCents)}'
                         : '${str.remaining} ${formatMoney(pb.remainingCents)}',
-                    style: mono(
+                    style: figure(
                       size: 12,
                       weight: FontWeight.w600,
                       color: pb.isOverBudget ? Colors.red : AppColors.muted,
@@ -536,7 +536,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
           const SizedBox(height: 14),
           if (hasPeriodicBudgets) ...[
             Text(str.categoryBudgets,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.muted)),
             const SizedBox(height: 4),
           ],
           for (final b in s.budgets) ...[
@@ -550,7 +550,7 @@ class _OverviewState extends ConsumerState<OverviewScreen> {
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text(str.categoryName(b.category), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                   Text('${formatMoney(spent, withCurrency: false)} / ${formatMoney(b.limitCents)} · ${(f * 100).round()}%',
-                      style: mono(
+                      style: figure(
                           size: 13,
                           weight: warn ? FontWeight.w700 : FontWeight.w400,
                           color: warn ? AppColors.amberInk : AppColors.muted)),
@@ -624,7 +624,7 @@ class ReceiptTile extends ConsumerWidget {
       onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
         child: Row(children: [
           Initial(r.store, green: when == 'dziś' || when == 'today'),
           const SizedBox(width: 14),
@@ -632,10 +632,10 @@ class ReceiptTile extends ConsumerWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(r.store, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
               Text('$when · ${str.itemsCount(r.items.length)} · ${str.categoryName(r.mainCategory)}',
-                  style: const TextStyle(color: AppColors.muted)),
+                  style: TextStyle(color: AppColors.muted)),
             ]),
           ),
-          Text(formatMoney(r.totalCents), style: mono(size: 16)),
+          Text(formatMoney(r.totalCents), style: figure(size: 16)),
         ]),
       ),
     );

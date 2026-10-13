@@ -149,7 +149,7 @@ class _ImportState extends ConsumerState<ImportScreen> {
                 ? 'Export your online banking history to CSV. The file is processed only on your phone.'
                 : 'Wyeksportuj historię z bankowości internetowej do CSV (mBank, PKO BP, ING, Pekao, Santander '
                   'i podobne). Plik jest czytany tylko na telefonie.',
-            style: const TextStyle(color: AppColors.muted, height: 1.4),
+            style: TextStyle(color: AppColors.muted, height: 1.4),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
@@ -192,7 +192,7 @@ class _ImportState extends ConsumerState<ImportScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(_error!, style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
+              child: Text(_error!, style: TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
             ),
           if (plan != null) ...[
             const SizedBox(height: 16),
@@ -232,12 +232,12 @@ class _ImportState extends ConsumerState<ImportScreen> {
                 if (plan.txns.length > 8)
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(str.isEnglish ? '+ ${plan.txns.length - 8} more' : '+ ${plan.txns.length - 8} kolejnych', style: const TextStyle(color: AppColors.muted)),
+                    child: Text(str.isEnglish ? '+ ${plan.txns.length - 8} more' : '+ ${plan.txns.length - 8} kolejnych', style: TextStyle(color: AppColors.muted)),
                   ),
                 if (plan.txns.isEmpty)
                   Padding(
                       padding: const EdgeInsets.all(20),
-                      child: Text(str.isEnglish ? 'Nothing new to import.' : 'Nic nowego do zaimportowania.', style: const TextStyle(color: AppColors.muted))),
+                      child: Text(str.isEnglish ? 'Nothing new to import.' : 'Nic nowego do zaimportowania.', style: TextStyle(color: AppColors.muted))),
               ]),
             ),
             const SizedBox(height: 20),
@@ -267,9 +267,9 @@ class _ImportState extends ConsumerState<ImportScreen> {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(children: [
           Expanded(child: Text(k)),
-          Text(v, style: mono(size: 15)),
+          Text(v, style: figure(size: 15)),
           const SizedBox(width: 10),
-          SizedBox(width: 110, child: Text(note, textAlign: TextAlign.right, style: const TextStyle(color: AppColors.muted, fontSize: 13))),
+          SizedBox(width: 110, child: Text(note, textAlign: TextAlign.right, style: TextStyle(color: AppColors.muted, fontSize: 13))),
         ]),
       );
 
@@ -283,7 +283,7 @@ class _ImportState extends ConsumerState<ImportScreen> {
             : (str.isEnglish ? 'Saved' : 'Zapisany');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -291,7 +291,7 @@ class _ImportState extends ConsumerState<ImportScreen> {
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
             Text(
                 '${shortDate(t.row.date, isEnglish: str.isEnglish)}${created ? ' · ${str.categoryName(t.newReceipt!.mainCategory)}' : ''}',
-                style: const TextStyle(color: AppColors.muted)),
+                style: TextStyle(color: AppColors.muted)),
           ]),
         ),
         const SizedBox(width: 8),
@@ -299,7 +299,7 @@ class _ImportState extends ConsumerState<ImportScreen> {
             bg: matched ? AppColors.blueSoft : created ? AppColors.greenSoft : AppColors.chip,
             fg: matched ? AppColors.blue : created ? AppColors.green : AppColors.muted),
         const SizedBox(width: 10),
-        Text(formatMoney(-t.row.cents, withCurrency: false), style: mono(size: 15, weight: FontWeight.w500)),
+        Text(formatMoney(-t.row.cents, withCurrency: false), style: figure(size: 15, weight: FontWeight.w500)),
       ]),
     );
   }

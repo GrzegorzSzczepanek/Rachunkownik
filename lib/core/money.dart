@@ -29,12 +29,12 @@ const _monthsEn = [
 ];
 
 const _monthsFull = [
-  'STYCZEŃ', 'LUTY', 'MARZEC', 'KWIECIEŃ', 'MAJ', 'CZERWIEC', 'LIPIEC', 'SIERPIEŃ',
-  'WRZESIEŃ', 'PAŹDZIERNIK', 'LISTOPAD', 'GRUDZIEŃ'
+  'styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień',
+  'wrzesień', 'październik', 'listopad', 'grudzień'
 ];
 const _monthsFullEn = [
-  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST',
-  'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+  'September', 'October', 'November', 'December'
 ];
 
 String shortDate(DateTime d, {bool isEnglish = false}) =>

@@ -37,7 +37,7 @@ class SettingsScreen extends ConsumerWidget {
         const SizedBox(height: 4),
         Text(
           str.settingsSubtitle,
-          style: const TextStyle(color: AppColors.muted, fontSize: 16),
+          style: TextStyle(color: AppColors.muted, fontSize: 16),
         ),
         const SizedBox(height: 16),
         const _LanguageCard(),
@@ -110,9 +110,9 @@ class SettingsScreen extends ConsumerWidget {
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.tune_rounded, color: AppColors.green),
+              leading: Icon(Icons.tune_rounded, color: AppColors.green),
               title: Text(str.enginesPerTask, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              subtitle: Text(str.enginesPerTaskSub, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
+              subtitle: Text(str.enginesPerTaskSub, style: TextStyle(fontSize: 13, color: AppColors.muted)),
               children: [
                 for (final t in AiTask.values) ...[
                   const Divider(),
@@ -139,7 +139,7 @@ class SettingsScreen extends ConsumerWidget {
                                     ? (str.isEnglish ? '$provider · configure model' : '$provider · skonfiguruj model')
                                     : '$provider · ${s.api.model}'))
                             : str.localDetail(t),
-                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                        style: TextStyle(color: AppColors.muted, fontSize: 13),
                       ),
                     ]),
                   ),
@@ -186,8 +186,8 @@ class SettingsScreen extends ConsumerWidget {
         leading: icon != null ? Icon(icon, color: AppColors.green, size: 22) : null,
         title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (trailing.isNotEmpty) Text(trailing, style: const TextStyle(color: AppColors.muted)),
-          const Icon(Icons.chevron_right, color: AppColors.muted),
+          if (trailing.isNotEmpty) Text(trailing, style: TextStyle(color: AppColors.muted)),
+          Icon(Icons.chevron_right, color: AppColors.muted),
         ]),
         onTap: onTap,
       );
@@ -384,7 +384,7 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
           subtitle: Text('${str.versionLabel} $appVersion · ${str.updatesSub}'),
           trailing: _checking
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.refresh_rounded, color: AppColors.green),
+              : Icon(Icons.refresh_rounded, color: AppColors.green),
           onTap: _checking ? null : _check,
         ),
         const Divider(),
@@ -392,7 +392,7 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           title: Text(str.github, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           subtitle: const Text(githubRepo),
-          trailing: const Icon(Icons.open_in_new_rounded, color: AppColors.muted, size: 20),
+          trailing: Icon(Icons.open_in_new_rounded, color: AppColors.muted, size: 20),
           onTap: () => launchUrl(Uri.parse('https://github.com/$githubRepo'), mode: LaunchMode.externalApplication),
         ),
       ]),
@@ -415,7 +415,7 @@ class _LanguageCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.language_rounded, color: AppColors.green, size: 24),
+            Icon(Icons.language_rounded, color: AppColors.green, size: 24),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -423,7 +423,7 @@ class _LanguageCard extends ConsumerWidget {
                 children: [
                   Text(str.language, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 2),
-                  Text(str.languageDesc, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                  Text(str.languageDesc, style: TextStyle(color: AppColors.muted, fontSize: 13)),
                 ],
               ),
             ),

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Rachunkownik, Korekta paragonu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+</style>
+</helmet>
+<div style="position:relative;width:390px;height:844px;overflow:hidden;background:#FFFFFF;font-family:'Figtree',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#17201C;box-sizing:border-box">
+  <div style="background:#E3EDE8;border-radius:0 0 32px 32px;padding:44px 20px 20px">
+    <header style="display:flex;align-items:center;gap:4px;height:52px;margin-left:-12px">
+      <a href="Skan.dc.html" aria-label="Wróć" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7M19 12H5"/></svg></a>
+      <div style="font-size:15px;color:#3A463F">Sprawdź odczyt</div>
+    </header>
+    <div style="display:flex;align-items:baseline;justify-content:space-between"><div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:30px;line-height:36px">Biedronka</div><div style="font-size:15px;color:#3A463F">dziś, 13 paź</div></div>
+    <div style="margin-top:8px;display:flex;align-items:baseline"><span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:56px;line-height:60px;letter-spacing:-0.02em">40,88</span><span style="margin-left:6px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px">zł</span></div>
+    <div style="font-size:14px;color:#3A463F">Suma zgadza się z pozycjami</div>
+  </div>
+  <div style="padding:8px 20px 0">
+    <div style="display:flex;align-items:center;gap:12px;min-height:72px"><div style="flex:1"><div style="font-size:17px;font-weight:700">Chleb wiejski</div><div style="font-size:14px;color:#566059">1 szt, Jedzenie</div></div><div style="font-size:17px;font-weight:700">4,49 zł</div></div>
+    <div style="display:flex;align-items:center;gap:12px;min-height:72px;border-top:1px solid #E1E6E3"><div style="flex:1"><div style="font-size:17px;font-weight:700">Ser gouda</div><div style="font-size:14px;color:#8A4B06;font-weight:600">Sprawdź, nie jestem pewien ceny</div></div><div style="font-size:17px;font-weight:700;color:#8A4B06">~12,99 zł</div></div>
+    <div style="display:flex;align-items:center;gap:12px;min-height:72px;border-top:1px solid #E1E6E3;border-bottom:1px solid #E1E6E3"><div style="flex:1"><div style="font-size:17px;font-weight:700">Filet z kurczaka</div><div style="font-size:14px;color:#566059">0,68 kg, Jedzenie</div></div><div style="font-size:17px;font-weight:700">23,40 zł</div></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <a href="#" style="flex:1;min-height:48px;display:flex;align-items:center;font-size:15px;font-weight:600;color:#1F5F4A;text-decoration:none">Dodaj pozycję</a>
+      <a href="#" style="min-height:48px;display:flex;align-items:center;font-size:15px;font-weight:600;color:#1F5F4A;text-decoration:none">Podziel na osobne wpisy</a>
+    </div>
+  </div>
+  <div style="position:absolute;left:24px;right:24px;bottom:32px">
+    <a href="Paragony.dc.html" style="height:56px;border-radius:16px;background:#1F5F4A;color:#FFFFFF;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:17px;font-weight:700">Zapisz paragon, 40,88 zł</a>
+    <a href="Skan.dc.html" style="margin-top:4px;min-height:48px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:15px;font-weight:600;color:#1F5F4A">Wpis ręczny bez zdjęcia</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

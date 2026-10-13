@@ -169,7 +169,7 @@ Future<void> showUpdateDialog(
   return showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Row(children: [
+      title: Row(children: [
         Icon(Icons.system_update_rounded, color: AppColors.green),
         SizedBox(width: 10),
         Text('Nowa wersja'),
@@ -198,7 +198,7 @@ Future<void> showUpdateDialog(
               update.releaseNotes!,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ],
           const SizedBox(height: 16),

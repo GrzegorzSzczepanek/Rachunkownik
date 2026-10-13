@@ -266,7 +266,7 @@ class _PeriodicBudgetDialogState extends ConsumerState<_PeriodicBudgetDialog> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today_rounded, size: 20, color: AppColors.green),
+                    Icon(Icons.calendar_today_rounded, size: 20, color: AppColors.green),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -274,7 +274,7 @@ class _PeriodicBudgetDialogState extends ConsumerState<_PeriodicBudgetDialog> {
                         children: [
                           Text(
                             str.budgetPeriod,
-                            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                            style: TextStyle(fontSize: 12, color: AppColors.muted),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -284,7 +284,7 @@ class _PeriodicBudgetDialogState extends ConsumerState<_PeriodicBudgetDialog> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.edit_calendar_rounded, size: 18, color: AppColors.muted),
+                    Icon(Icons.edit_calendar_rounded, size: 18, color: AppColors.muted),
                   ],
                 ),
               ),

@@ -101,12 +101,12 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate> with Widg
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.lock_outline_rounded, size: 48, color: AppColors.green),
+                  child: Icon(Icons.lock_outline_rounded, size: 48, color: AppColors.green),
                 ),
                 const SizedBox(height: 28),
                 Text(
                   str.appName,
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -114,7 +114,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate> with Widg
                       ? 'The app is secured with biometric lock.'
                       : 'Aplikacja jest zabezpieczona blokadą biometryczną.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, color: AppColors.muted),
+                  style: TextStyle(fontSize: 16, color: AppColors.muted),
                 ),
                 const SizedBox(height: 36),
                 FilledButton.icon(

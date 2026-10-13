@@ -33,9 +33,9 @@ class SubscriptionsScreen extends ConsumerWidget {
         ]),
         const SizedBox(height: 14),
         Eyebrow(str.monthlyEyebrow),
-        Text(formatMoney(monthly), style: mono(size: 44)),
+        Text(formatMoney(monthly), style: figure(size: 44)),
         Text('${formatMoney(monthly * 12)} ${str.yearly} · ${active.length} ${str.active}',
-            style: mono(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
+            style: figure(size: 14, weight: FontWeight.w400, color: AppColors.muted)),
         const SizedBox(height: 20),
         for (final c in candidates)
           Padding(
@@ -44,10 +44,10 @@ class SubscriptionsScreen extends ConsumerWidget {
               border: AppColors.amber,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(str.detectedAutomatically,
-                    style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+                    style: TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
                 const SizedBox(height: 10),
                 Text.rich(TextSpan(children: [
-                  TextSpan(text: c.name, style: mono(size: 16)),
+                  TextSpan(text: c.name, style: figure(size: 16)),
                   TextSpan(
                       text: ': ${formatMoney(c.cents)}, ${c.period == BillingPeriod.monthly ? str.everyMonth : str.everyYear}, '
                           '${c.occurrences} ${str.candidatePrompt}',
@@ -86,7 +86,7 @@ class SubscriptionsScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(str.noSubsHint,
-                    style: const TextStyle(color: AppColors.muted)),
+                    style: TextStyle(color: AppColors.muted)),
               ),
             for (final s in upcoming)
               Dismissible(
@@ -104,7 +104,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                   return Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     margin: const EdgeInsets.only(top: 6),
-                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
                     child: Row(children: [
                       Initial(s.name),
                       const SizedBox(width: 14),
@@ -112,10 +112,10 @@ class SubscriptionsScreen extends ConsumerWidget {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(s.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                           Text('${shortDate(next, isEnglish: str.isEnglish)} · ${str.inDays(days)}',
-                              style: const TextStyle(color: AppColors.muted)),
+                              style: TextStyle(color: AppColors.muted)),
                         ]),
                       ),
-                      Text(formatMoney(s.cents), style: mono(size: 16)),
+                      Text(formatMoney(s.cents), style: figure(size: 16)),
                     ]),
                   );
                 }),

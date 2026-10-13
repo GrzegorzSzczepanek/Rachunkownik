@@ -127,9 +127,16 @@ class _RachunkownikAppState extends ConsumerState<RachunkownikApp> with WidgetsB
     return MaterialApp.router(
       title: s.appName,
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       routerConfig: _router,
-      builder: (context, child) => BiometricLockGate(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) {
+        // Tokens are static getters; re-key the tree so every screen picks the new palette on theme change.
+        final b = Theme.of(context).brightness;
+        AppColors.setBrightness(b);
+        return KeyedSubtree(key: ValueKey(b), child: BiometricLockGate(child: child ?? const SizedBox.shrink()));
+      },
     );
   }
 }

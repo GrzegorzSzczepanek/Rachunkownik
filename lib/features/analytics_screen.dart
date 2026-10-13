@@ -80,13 +80,13 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Text(str.noExpensesToAnalyze,
-            style: const TextStyle(color: AppColors.muted)),
+            style: TextStyle(color: AppColors.muted)),
       );
     }
     final delta = d.previousTotal == 0 ? null : (d.total - d.previousTotal) / d.previousTotal;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Eyebrow(str.spent),
-      Text(formatMoney(d.total), style: mono(size: 36)),
+      Text(formatMoney(d.total), style: figure(size: 36)),
       const SizedBox(height: 4),
       if (delta != null)
         Text(
@@ -95,7 +95,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
           style: TextStyle(color: delta > 0 ? AppColors.amberInk : AppColors.green, fontWeight: FontWeight.w600),
         )
       else
-        Text(str.noPreviousMonthData, style: const TextStyle(color: AppColors.muted)),
+        Text(str.noPreviousMonthData, style: TextStyle(color: AppColors.muted)),
       const SizedBox(height: 14),
       Container(
         padding: const EdgeInsets.all(14),
@@ -110,10 +110,10 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(str.incomes, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  Text(str.incomes, style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text('+${formatMoney(d.income)}',
-                      style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
+                      style: figure(size: 15, weight: FontWeight.w700, color: AppColors.green)),
                 ],
               ),
             ),
@@ -123,11 +123,11 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(str.balance, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                  Text(str.balance, style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
                     '${d.balance >= 0 ? '+' : ''}${formatMoney(d.balance)}',
-                    style: mono(
+                    style: figure(
                       size: 15,
                       weight: FontWeight.w700,
                       color: d.balance >= 0 ? AppColors.green : AppColors.amberInk,
@@ -179,7 +179,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
                 Text(str.categoryName(e.key), style: const TextStyle(fontWeight: FontWeight.w600)),
               ]),
               Text('+${formatMoney(e.value)}',
-                  style: mono(size: 15, weight: FontWeight.w700, color: AppColors.green)),
+                  style: figure(size: 15, weight: FontWeight.w700, color: AppColors.green)),
             ],
           ),
         ),
@@ -198,7 +198,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
         alignment: BarChartAlignment.spaceAround,
         gridData: FlGridData(
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.border, strokeWidth: 1),
+          getDrawingHorizontalLine: (_) => FlLine(color: AppColors.border, strokeWidth: 1),
         ),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
@@ -210,7 +210,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
               reservedSize: 40,
               getTitlesWidget: (v, meta) => v == meta.max
                   ? const SizedBox()
-                  : Text(_axis(v), style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                  : Text(_axis(v), style: TextStyle(fontSize: 11, color: AppColors.muted)),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -254,7 +254,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
   Widget _categories(AnalyticsData d, AppStrings str) {
     final entries = d.byCategory.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    if (entries.isEmpty) return Text(str.noData, style: const TextStyle(color: AppColors.muted));
+    if (entries.isEmpty) return Text(str.noData, style: TextStyle(color: AppColors.muted));
     final sum = entries.fold(0, (a, e) => a + e.value);
     return Column(children: [
       SizedBox(
@@ -280,8 +280,8 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
             ],
           )),
           Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(_focus != null ? str.categoryName(_focus!) : str.totalSummary, style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
-            Text(formatMoney(_focus == null ? sum : d.byCategory[_focus] ?? 0), style: mono(size: 18)),
+            Text(_focus != null ? str.categoryName(_focus!) : str.totalSummary, style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+            Text(formatMoney(_focus == null ? sum : d.byCategory[_focus] ?? 0), style: figure(size: 18)),
           ]),
         ]),
       ),
@@ -302,11 +302,11 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
                     style: TextStyle(
                         fontWeight: _focus == e.key ? FontWeight.w800 : FontWeight.w500, fontSize: 15)),
               ),
-              Text('${(e.value / sum * 100).round()}%', style: const TextStyle(color: AppColors.muted)),
+              Text('${(e.value / sum * 100).round()}%', style: TextStyle(color: AppColors.muted)),
               const SizedBox(width: 12),
               SizedBox(
                   width: 96,
-                  child: Text(formatMoney(e.value), textAlign: TextAlign.right, style: mono(size: 14, weight: FontWeight.w500))),
+                  child: Text(formatMoney(e.value), textAlign: TextAlign.right, style: figure(size: 14, weight: FontWeight.w500))),
             ]),
           ),
         ),
@@ -336,7 +336,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
                 return (day == 1 || day % 5 == 0)
                     ? Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text('$day', style: const TextStyle(fontSize: 11, color: AppColors.muted)))
+                        child: Text('$day', style: TextStyle(fontSize: 11, color: AppColors.muted)))
                     : const SizedBox();
               },
             ),
@@ -373,7 +373,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
           child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Expanded(child: Text(s.key, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
-              Text(formatMoney(s.value), style: mono(size: 14, weight: FontWeight.w500)),
+              Text(formatMoney(s.value), style: figure(size: 14, weight: FontWeight.w500)),
             ]),
             const SizedBox(height: 4),
             ProgressBar(maxV == 0 ? 0 : s.value / maxV, height: 6),

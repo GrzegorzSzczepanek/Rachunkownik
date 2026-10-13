@@ -38,7 +38,7 @@ Future<void> startScan(BuildContext context) async {
             title: Text(s.enterManual),
             onTap: () => Navigator.pop(ctx, 'manual')),
         ListTile(
-            leading: const Icon(Icons.trending_up_rounded, color: AppColors.green),
+            leading: Icon(Icons.trending_up_rounded, color: AppColors.green),
             title: Text(s.addIncome, style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(s.incomeSubtitle),
             onTap: () => Navigator.pop(ctx, 'income')),
@@ -184,7 +184,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                   const CircularProgressIndicator(),
                   const SizedBox(height: 20),
                   Text('${_elapsed.elapsed.inSeconds} s',
-                      style: mono(size: 20, weight: FontWeight.w500)),
+                      style: figure(size: 20, weight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Text(
                     (widget.forceEngine ?? settings.engineFor(AiTask.receiptReading)) == AiEngine.local
@@ -195,7 +195,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                             ? 'Reading receipt via ${settings.api.providerLabel}…'
                             : 'Czytam paragon przez ${settings.api.providerLabel}…'),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.muted),
+                    style: TextStyle(color: AppColors.muted),
                   ),
                   const SizedBox(height: 24),
                   OutlinedButton(
@@ -205,7 +205,7 @@ class _ProcessingState extends ConsumerState<ProcessingScreen> {
                   ),
                 ])
               : Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.error_outline, size: 40, color: AppColors.amber),
+                  Icon(Icons.error_outline, size: 40, color: AppColors.amber),
                   const SizedBox(height: 12),
                   Text(_error!, textAlign: TextAlign.center),
                   const SizedBox(height: 20),
@@ -374,7 +374,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                         icon: const Icon(Icons.remove_circle_outline),
                         onPressed: quantity > 1 ? () => setS(() => quantity--) : null,
                       ),
-                      Text('$quantity', style: mono(size: 16, weight: FontWeight.w700)),
+                      Text('$quantity', style: figure(size: 16, weight: FontWeight.w700)),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
                         onPressed: () => setS(() => quantity++),
@@ -396,7 +396,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                       padding: const EdgeInsets.only(top: 6, bottom: 4),
                       child: Text(
                         '${str.totalSummary}: $quantity × ${price.text} zł = $totalPreview',
-                        style: mono(size: 13, weight: FontWeight.w600, color: AppColors.green),
+                        style: figure(size: 13, weight: FontWeight.w600, color: AppColors.green),
                       ),
                     ),
                   if (hasMultiple)
@@ -562,15 +562,15 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                   if (d != null) setState(() => r.date = d);
                 },
                 child: Text('${longDate(r.date, isEnglish: str.isEnglish)} · ${str.itemsCount(r.items.length)}  ✎',
-                    style: const TextStyle(color: AppColors.muted)),
+                    style: TextStyle(color: AppColors.muted)),
               ),
               const SizedBox(height: 8),
               InkWell(
                 onTap: _editTotal,
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(formatMoney(_total), style: mono(size: 32)),
+                  Text(formatMoney(_total), style: figure(size: 32)),
                   const SizedBox(width: 8),
-                  const Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
+                  Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
                 ]),
               ),
             ]),
@@ -607,7 +607,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
               Expanded(
                 child: Text(
                     '${r.engineLabel ?? ''}${widget.elapsed == null ? '' : ' · ${(widget.elapsed!.inMilliseconds / 1000).toStringAsFixed(1)} s'}',
-                    style: const TextStyle(color: AppColors.muted)),
+                    style: TextStyle(color: AppColors.muted)),
               ),
             ]),
           ],
@@ -626,7 +626,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                   child: Container(
                     color: i.lowConfidence ? AppColors.amberSoft : null,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: i.lowConfidence ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+                    decoration: i.lowConfidence ? null : BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -638,7 +638,7 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                                   bg: i.lowConfidence ? const Color(0xFFF3DDB0) : AppColors.chip,
                                   fg: i.lowConfidence ? AppColors.amberInk : AppColors.ink),
                               const SizedBox(width: 12),
-                              Text(formatMoney(i.cents, withCurrency: false), style: mono(size: 16, weight: FontWeight.w500)),
+                              Text(formatMoney(i.cents, withCurrency: false), style: figure(size: 16, weight: FontWeight.w500)),
                             ]),
                             if (i.lowConfidence)
                               Padding(
@@ -647,13 +647,13 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                                     str.isEnglish
                                         ? '⚠ Low recognition confidence. Verify name and category.'
                                         : '⚠ Niska pewność odczytu. Sprawdź nazwę i kategorię.',
-                                    style: const TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
+                                    style: TextStyle(color: AppColors.amberInk, fontWeight: FontWeight.w600)),
                               ),
                           ]),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.copy_rounded, size: 20, color: AppColors.muted),
+                          icon: Icon(Icons.copy_rounded, size: 20, color: AppColors.muted),
                           tooltip: str.copyItem,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -667,11 +667,11 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                 onTap: () => _editItem(null),
                 child: Container(
                   padding: const EdgeInsets.all(18),
-                  decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+                  decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
                   child: Row(children: [
-                    const Icon(Icons.add, color: AppColors.green),
+                    Icon(Icons.add, color: AppColors.green),
                     const SizedBox(width: 8),
-                    Text(str.addItem, style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
+                    Text(str.addItem, style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
                   ]),
                 ),
               ),
@@ -684,18 +684,18 @@ class _ReviewState extends ConsumerState<ReviewScreen> {
                     str.isEnglish
                         ? '✓ Items total ${formatMoney(r.itemsSum, withCurrency: false)} = receipt total ${formatMoney(_total, withCurrency: false)}'
                         : '✓ Suma pozycji ${formatMoney(r.itemsSum, withCurrency: false)} = suma paragonu ${formatMoney(_total, withCurrency: false)}',
-                    style: mono(size: 13, weight: FontWeight.w500, color: AppColors.green))
+                    style: figure(size: 13, weight: FontWeight.w500, color: AppColors.green))
                 : Text(
                     str.isEnglish
                         ? '⚠ Items total ${formatMoney(r.itemsSum, withCurrency: false)} ≠ receipt total ${formatMoney(_total, withCurrency: false)}. Please check items.'
                         : '⚠ Suma pozycji ${formatMoney(r.itemsSum, withCurrency: false)} ≠ suma paragonu ${formatMoney(_total, withCurrency: false)}. Sprawdź pozycje.',
-                    style: mono(size: 13, weight: FontWeight.w600, color: AppColors.amberInk)),
+                    style: figure(size: 13, weight: FontWeight.w600, color: AppColors.amberInk)),
           if (low > 0)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                   str.isEnglish ? '$low items to check' : '$low pozycji do sprawdzenia',
-                  style: const TextStyle(color: AppColors.amberInk)),
+                  style: TextStyle(color: AppColors.amberInk)),
             ),
           const SizedBox(height: 20),
           if (canRetry) ...[
