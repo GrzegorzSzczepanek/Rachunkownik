@@ -438,19 +438,27 @@ class _LanguageCard extends ConsumerWidget {
             ),
           ]),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<AppLanguage>(
-              segments: [
-                ButtonSegment(value: AppLanguage.system, label: Text(str.languageSystem)),
-                const ButtonSegment(value: AppLanguage.pl, label: Text('Polski')),
-                const ButtonSegment(value: AppLanguage.en, label: Text('English')),
-              ],
-              selected: {currentLang},
-              onSelectionChanged: (set) {
-                if (set.isNotEmpty) notifier.setLanguage(set.first);
-              },
-            ),
+          Container(
+            height: 52,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(color: AppColors.field, borderRadius: BorderRadius.circular(14)),
+            child: Row(children: [
+              for (final e in [(AppLanguage.system, str.languageSystem), (AppLanguage.pl, 'Polski'), (AppLanguage.en, 'English')])
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => notifier.setLanguage(e.$1),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: currentLang == e.$1 ? AppColors.bg : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
+                        boxShadow: currentLang == e.$1 ? [BoxShadow(color: const Color(0xFF17201C).withValues(alpha: 0.18), blurRadius: 2, offset: const Offset(0, 1))] : null,
+                      ),
+                      child: Text(e.$2, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: fig(14, weight: currentLang == e.$1 ? 700 : 600, color: currentLang == e.$1 ? AppColors.text : AppColors.text3)),
+                    ),
+                  ),
+                ),
+            ]),
           ),
         ],
       ),

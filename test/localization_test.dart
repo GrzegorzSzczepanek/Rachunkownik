@@ -19,7 +19,7 @@ void main() {
       expect(s.tabSubscriptions, 'Subskrypcje');
       expect(s.tabSettings, 'Ustawienia');
       expect(s.addReceipt, 'Dodaj paragon');
-      expect(s.spent, 'WYDANE');
+      expect(s.spent, 'Wydane');
       expect(s.budget, 'Budżet');
       expect(s.unlock, 'Odblokuj');
     });
@@ -33,7 +33,7 @@ void main() {
       expect(s.tabSubscriptions, 'Subscriptions');
       expect(s.tabSettings, 'Settings');
       expect(s.addReceipt, 'Add receipt');
-      expect(s.spent, 'SPENT');
+      expect(s.spent, 'Spent');
       expect(s.budget, 'Budget');
       expect(s.unlock, 'Unlock');
     });
