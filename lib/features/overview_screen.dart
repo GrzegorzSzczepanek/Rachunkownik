@@ -10,6 +10,7 @@ import '../providers.dart';
 import 'budgets_screen.dart';
 import 'chat_screen.dart';
 import 'income_dialog.dart';
+import 'periodic_budget_dialog.dart';
 import 'scan_flow.dart' show ReviewScreen;
 import 'widgets.dart';
 
@@ -24,6 +25,7 @@ class OverviewScreen extends ConsumerWidget {
     final summary = ref.watch(monthSummaryProvider).valueOrNull;
     final receipts = ref.watch(receiptsProvider).valueOrNull ?? const <Receipt>[];
     final subs = ref.watch(subscriptionsProvider).valueOrNull ?? const <Subscription>[];
+    final periodic = ref.watch(periodicBudgetsProvider).valueOrNull ?? const <PeriodicBudget>[];
     final bottom = 84 + MediaQuery.of(context).padding.bottom + 40;
     final upcoming = [...subs.where((s) => s.active)]..sort((a, b) => a.nextDate.compareTo(b.nextDate));
     return ListView(padding: EdgeInsets.only(bottom: bottom), children: [
@@ -50,7 +52,7 @@ class OverviewScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          if (summary != null) ..._budgets(context, summary, str),
+          if (summary != null) ..._budgets(context, ref, summary, periodic, str),
           const SizedBox(height: 8),
           NavRow(
             topLine: summary != null && summary.budgets.isNotEmpty ? true : false,
@@ -130,23 +132,49 @@ class OverviewScreen extends ConsumerWidget {
         Text(value, style: fig(18, weight: 700, color: color)),
       ]);
 
-  /// Category budgets as flat rows. Period budgets and editing live in [BudgetsScreen].
-  List<Widget> _budgets(BuildContext context, MonthSummary s, AppStrings str) {
+  /// Category and period budgets as flat rows; "Wszystkie" opens [BudgetsScreen].
+  List<Widget> _budgets(BuildContext context, WidgetRef ref, MonthSummary s, List<PeriodicBudget> periodic, AppStrings str) {
     return [
       SectionHeader(str.budgets, action: str.all, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BudgetsScreen()))),
-      if (s.budgets.isEmpty)
+      if (s.budgets.isEmpty && periodic.isEmpty)
         Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Text(str.budgetsHint, style: fig(15, color: AppColors.text3, height: 22 / 15)),
-        )
-      else
-        for (var i = 0; i < s.budgets.length; i++)
+        ),
+      for (var i = 0; i < s.budgets.length; i++)
+        BudgetRow(
+          name: str.categoryName(s.budgets[i].category),
+          spent: s.byCategory[s.budgets[i].category] ?? 0,
+          limit: s.budgets[i].limitCents,
+          first: i == 0,
+        ),
+      if (periodic.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: Text(str.tripAndPeriodBudgets, style: fig(14, weight: 600, color: AppColors.text2)),
+        ),
+        for (var i = 0; i < periodic.length; i++)
           BudgetRow(
-            name: str.categoryName(s.budgets[i].category),
-            spent: s.byCategory[s.budgets[i].category] ?? 0,
-            limit: s.budgets[i].limitCents,
+            name: periodic[i].name,
+            spent: periodic[i].spentCents,
+            limit: periodic[i].limitCents,
             first: i == 0,
+            subtitle: '${shortDate(periodic[i].startDate, isEnglish: str.isEnglish)} – ${shortDate(periodic[i].endDate, isEnglish: str.isEnglish)}',
+            onTap: () => showPeriodicBudgetDialog(context, initial: periodic[i]),
           ),
+      ],
+      InkWell(
+        onTap: () => showPeriodicBudgetDialog(context),
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+          child: Row(children: [
+            Icon(Icons.add, size: 20, color: AppColors.accent),
+            const SizedBox(width: 8),
+            Text(str.addBudget, style: fig(15, weight: 600, color: AppColors.accent)),
+          ]),
+        ),
+      ),
     ];
   }
 }
