@@ -63,7 +63,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
                 Transform.translate(offset: const Offset(-12, 0), child: const BackButton()),
                 const Spacer(),
                 IconButton(tooltip: str.isEnglish ? 'Previous month' : 'Poprzedni miesiąc', icon: const Icon(Icons.chevron_left), onPressed: () => _shift(-1)),
-                SizedBox(width: 130, child: Text(monthLabel(_month, isEnglish: str.isEnglish), textAlign: TextAlign.center, style: fig(16, weight: 700))),
+                SizedBox(width: 150, child: FittedBox(fit: BoxFit.scaleDown, child: Text(monthLabel(_month, isEnglish: str.isEnglish), textAlign: TextAlign.center, style: fig(16, weight: 700)))),
                 Transform.translate(
                   offset: const Offset(12, 0),
                   child: IconButton(tooltip: str.isEnglish ? 'Next month' : 'Następny miesiąc', icon: const Icon(Icons.chevron_right), onPressed: _isCurrent ? null : () => _shift(1)),
@@ -256,7 +256,7 @@ class _AnalyticsState extends ConsumerState<AnalyticsScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               interval: 5,
-              getTitlesWidget: (v, _) => v == 0 ? const SizedBox() : Padding(padding: const EdgeInsets.only(top: 4), child: Text('${v.toInt()}', style: fig(11, color: AppColors.text2))),
+              getTitlesWidget: (v, _) => (v == 0 || v.toInt() % 5 != 0) ? const SizedBox() : Padding(padding: const EdgeInsets.only(top: 4), child: Text('${v.toInt()}', style: fig(11, color: AppColors.text2))),
             ),
           ),
         ),
